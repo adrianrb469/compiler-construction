@@ -1,3 +1,7 @@
+calc 
+
+y.output
+
 # Ignore executable files
 *.exe
 *.out
