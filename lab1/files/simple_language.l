@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <string>
 #include "y.tab.h"
+
 %}
 
 %%
@@ -10,10 +11,12 @@
 [0-9]+                  { yylval.num = strtol(yytext, NULL, 10); return NUMBER; }
 [()=+*/^;.]             { return *yytext; }
 "\n"                    { return '\n'; }
-[ \t]                   ;  // skip whitespace
-.                       ; /* ignore all the rest */
+[\t]                   ;  
+.                       { printf("Unknown character: %c\n", *yytext); }
+
 %%
 
 int yywrap() {
     return 1;
 }
+
