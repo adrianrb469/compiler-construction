@@ -1,9 +1,10 @@
 %{
 #include <iostream>
-#include <string>
 #include <map>
+#include <string>
+#include <cmath>
 
-static std::map<std::string, int> vars;
+std::map<std::string, int> vars;
 
 inline void yyerror(const char *str) { 
     std::cerr << "Error: " << str << std::endl; 
@@ -27,7 +28,6 @@ int yylex();
 %left '*' '/'
 %left '^'
 
-
 %%
 
 program: program statement '\n'
@@ -40,13 +40,20 @@ statement:
     ;
 
 assignment:
-    VARIABLE '=' expression { vars[*$1] = $3; }
+    VARIABLE '=' expression { vars[*$1] = $3; printf("Assigned %d to %s\n", $3, $1->c_str()); }
     | VARIABLE '=' { yyerror("Empty assignment is not allowed."); }
     ;
 
 expression: 
     NUMBER 
-    | VARIABLE  { $$ = vars[*$1]; }
+    | VARIABLE  { 
+        if (vars.find(*$1) == vars.end()) {
+            yyerror(("Variable '" + *$1 + "' is not assigned anything.").c_str());
+            $$ = 0; // Or handle as you see fit
+        } else {
+            $$ = vars[*$1];
+        }
+    }
     | expression '+' expression { $$ = $1 + $3; }
     | expression '-' expression { $$ = $1 - $3; }
     | expression '*' expression { $$ = $1 * $3; }
@@ -54,13 +61,13 @@ expression:
     | expression '/' expression { 
         if ($3 == 0) {
             yyerror("Division by zero is not allowed.");
+            $$ = 0; // Or handle as you see fit
         } else {
             $$ = $1 / $3;
         }
     }
     | '(' expression ')' { $$ = $2; }
     ;
- 
 
 %%
 
