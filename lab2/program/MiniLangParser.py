@@ -10,7 +10,7 @@ else:
 
 def serializedATN():
     return [
-        4,1,11,43,2,0,7,0,2,1,7,1,2,2,7,2,1,0,4,0,8,8,0,11,0,12,0,9,1,1,
+        4,1,13,43,2,0,7,0,2,1,7,1,2,2,7,2,1,0,4,0,8,8,0,11,0,12,0,9,1,1,
         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,21,8,1,1,2,1,2,1,2,1,2,1,2,1,
         2,1,2,3,2,30,8,2,1,2,1,2,1,2,1,2,1,2,1,2,5,2,38,8,2,10,2,12,2,41,
         9,2,1,2,0,1,4,3,0,2,4,0,2,1,0,4,5,1,0,6,7,46,0,7,1,0,0,0,2,20,1,
@@ -41,7 +41,7 @@ class MiniLangParser ( Parser ):
 
     symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "MUL", "DIV", "ADD", "SUB", "ID", "INT", "NEWLINE", 
-                      "WS" ]
+                      "COMMENT", "WS", "INVALID_CHAR" ]
 
     RULE_prog = 0
     RULE_stat = 1
@@ -60,7 +60,9 @@ class MiniLangParser ( Parser ):
     ID=8
     INT=9
     NEWLINE=10
-    WS=11
+    COMMENT=11
+    WS=12
+    INVALID_CHAR=13
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)

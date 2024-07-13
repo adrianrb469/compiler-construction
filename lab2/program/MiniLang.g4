@@ -21,4 +21,8 @@ SUB : '-' ; // define token for subtraction
 ID  : [a-zA-Z]+ ; // match identifiers
 INT : [0-9]+ ; // match integers
 NEWLINE:'\r'? '\n' ; // return newlines to parser (is end-statement signal)
+COMMENT : '//' ~[\r\n]* -> skip ; // match inline comments
+
 WS  : [ \t]+ -> skip ; // toss out whitespace
+
+INVALID_CHAR: . ; // match any single character that is not in the grammar
