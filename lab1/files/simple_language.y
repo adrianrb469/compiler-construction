@@ -4,6 +4,7 @@
 #include <string>
 #include <cmath>
 
+
 std::map<std::string, int> vars;
 
 inline void yyerror(const char *str) { 
@@ -28,6 +29,8 @@ int yylex();
 %left '*' '/'
 %left '^'
 
+
+
 %%
 
 program: program statement '\n'
@@ -41,15 +44,14 @@ statement:
 
 assignment:
     VARIABLE '=' expression { vars[*$1] = $3; printf("Assigned %d to %s\n", $3, $1->c_str()); }
-    | VARIABLE '=' { yyerror("Empty assignment is not allowed."); }
+    | VARIABLE '=' {  printf("Empty assignment is not allowed.\n"); }
     ;
 
 expression: 
     NUMBER 
     | VARIABLE  { 
         if (vars.find(*$1) == vars.end()) {
-            yyerror(("Variable '" + *$1 + "' is not assigned anything.").c_str());
-            $$ = 0; // Or handle as you see fit
+            printf("Variable '%s' is not assigned anything.\n", $1->c_str());
         } else {
             $$ = vars[*$1];
         }
@@ -60,8 +62,8 @@ expression:
     | expression '^' expression { $$ = pow($1, $3); }
     | expression '/' expression { 
         if ($3 == 0) {
-            yyerror("Division by zero is not allowed.");
-            $$ = 0; // Or handle as you see fit
+            printf("Division by zero is not allowed.\n");
+         
         } else {
             $$ = $1 / $3;
         }
