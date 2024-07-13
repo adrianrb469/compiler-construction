@@ -3,6 +3,15 @@ from antlr4 import *
 from MiniLangLexer import MiniLangLexer
 from MiniLangParser import MiniLangParser
 from MiniLangVisitor import MiniLangVisitor
+from antlr4.error.ErrorListener import ErrorListener
+
+
+class MiniLangErrorListener(ErrorListener):
+    def __init__(self):
+        super(MiniLangErrorListener, self).__init__()
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        print(f"Syntax Error: {msg} at line {line}, column {column}")
 
 class MiniLangCustomVisitor(MiniLangVisitor):
     def __init__(self):
@@ -13,14 +22,50 @@ class MiniLangCustomVisitor(MiniLangVisitor):
 
     def visitPrintExpr(self, ctx: MiniLangParser.PrintExprContext):
         value = self.visit(ctx.expr())
+
+        if value is None:
+            print(f"Error: Invalid value for print statement")
+            return  
+        
         print(value)
         return value
 
-    def visitAssign(self, ctx: MiniLangParser.AssignContext):
+    def visitAssignment(self, ctx: MiniLangParser.AssignmentContext):
         id = ctx.ID().getText()
-        value = self.visit(ctx.expr())
+        value = self.visit(ctx.expr())  
         self.memory[id] = value
         return value
+    
+    def visitIfBlock(self, ctx: MiniLangParser.IfBlockContext):
+        condition = self.visit(ctx.expr())
+        if condition:
+            self.visit(ctx.block(0))
+        elif ctx.block(1) is not None:
+            self.visit(ctx.block(1))
+        
+    def visitBlock(self, ctx: MiniLangParser.BlockContext):
+        return self.visitChildren(ctx)
+    
+    def visitCompare(self, ctx: MiniLangParser.CompareContext):
+        left = self.visit(ctx.expr(0))
+        right = self.visit(ctx.expr(1))
+        op = ctx.getChild(1).getText()
+        if op == '==':
+            return left == right
+        elif op == '!=':
+            return left != right
+        elif op == '<':
+            return left < right
+        elif op == '<=':
+            return left <= right
+        elif op == '>':
+            return left > right
+        elif op == '>=':
+            return left >= right
+        
+    def visitWhileBlock(self, ctx: MiniLangParser.WhileBlockContext):
+        while self.visit(ctx.expr()):
+            self.visit(ctx.block())
 
     def visitMulDiv(self, ctx: MiniLangParser.MulDivContext):
         left = self.visit(ctx.expr(0))
@@ -40,6 +85,13 @@ class MiniLangCustomVisitor(MiniLangVisitor):
 
     def visitInt(self, ctx: MiniLangParser.IntContext):
         return int(ctx.INT().getText())
+    
+    def visitConstant(self, ctx: MiniLangParser.ConstantContext):
+        if ctx.INT():
+            return int(ctx.INT().getText())
+        elif ctx.STRING():
+            return ctx.STRING().getText().strip('"')
+        return None
 
     def visitId(self, ctx: MiniLangParser.IdContext):
         id = ctx.ID().getText()

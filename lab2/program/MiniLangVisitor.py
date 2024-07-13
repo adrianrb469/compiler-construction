@@ -24,13 +24,48 @@ class MiniLangVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by MiniLangParser#ifStat.
+    def visitIfStat(self, ctx:MiniLangParser.IfStatContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#whileStat.
+    def visitWhileStat(self, ctx:MiniLangParser.WhileStatContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by MiniLangParser#blank.
     def visitBlank(self, ctx:MiniLangParser.BlankContext):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by MiniLangParser#ifBlock.
+    def visitIfBlock(self, ctx:MiniLangParser.IfBlockContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#whileBlock.
+    def visitWhileBlock(self, ctx:MiniLangParser.WhileBlockContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#block.
+    def visitBlock(self, ctx:MiniLangParser.BlockContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#assignment.
+    def visitAssignment(self, ctx:MiniLangParser.AssignmentContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by MiniLangParser#parens.
     def visitParens(self, ctx:MiniLangParser.ParensContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#compare.
+    def visitCompare(self, ctx:MiniLangParser.CompareContext):
         return self.visitChildren(ctx)
 
 
@@ -51,6 +86,21 @@ class MiniLangVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by MiniLangParser#int.
     def visitInt(self, ctx:MiniLangParser.IntContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#constantExpr.
+    def visitConstantExpr(self, ctx:MiniLangParser.ConstantExprContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#compareOp.
+    def visitCompareOp(self, ctx:MiniLangParser.CompareOpContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by MiniLangParser#constant.
+    def visitConstant(self, ctx:MiniLangParser.ConstantContext):
         return self.visitChildren(ctx)
 
 

@@ -1,3 +1,19 @@
-x = 2 * 3 + 4
-x = 4
-x
+x=5;
+
+print("Ready for takeoff!");
+
+while x>0 do {
+    x = x - 1;
+    print(x);
+}
+
+if x!=0 {
+    print("Ship exploded!");
+} else {
+    x = x-1;
+    print("The value of x is now:");
+    print(x);
+    if x < 0 {
+        print("Ship is safe!");
+    }
+}
