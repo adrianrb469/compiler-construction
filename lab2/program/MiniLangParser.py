@@ -10,35 +10,35 @@ else:
 
 def serializedATN():
     return [
-        4,1,28,92,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,
+        4,1,31,91,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,
         6,2,7,7,7,2,8,7,8,1,0,4,0,20,8,0,11,0,12,0,21,1,1,1,1,1,1,1,1,1,
         1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,36,8,1,1,2,1,2,1,2,1,2,1,2,3,2,
         43,8,2,1,3,1,3,1,3,1,3,1,3,1,4,1,4,5,4,52,8,4,10,4,12,4,55,9,4,1,
-        4,1,4,1,5,1,5,1,5,1,5,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,3,6,71,8,6,
-        1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,5,6,83,8,6,10,6,12,6,86,
-        9,6,1,7,1,7,1,8,1,8,1,8,0,1,12,9,0,2,4,6,8,10,12,14,16,0,4,1,0,18,
-        19,1,0,20,21,1,0,12,17,1,0,23,24,95,0,19,1,0,0,0,2,35,1,0,0,0,4,
-        37,1,0,0,0,6,44,1,0,0,0,8,49,1,0,0,0,10,58,1,0,0,0,12,70,1,0,0,0,
-        14,87,1,0,0,0,16,89,1,0,0,0,18,20,3,2,1,0,19,18,1,0,0,0,20,21,1,
-        0,0,0,21,19,1,0,0,0,21,22,1,0,0,0,22,1,1,0,0,0,23,24,5,1,0,0,24,
-        25,5,2,0,0,25,26,3,12,6,0,26,27,5,3,0,0,27,28,5,4,0,0,28,36,1,0,
-        0,0,29,30,3,10,5,0,30,31,5,4,0,0,31,36,1,0,0,0,32,36,3,4,2,0,33,
-        36,3,6,3,0,34,36,5,25,0,0,35,23,1,0,0,0,35,29,1,0,0,0,35,32,1,0,
-        0,0,35,33,1,0,0,0,35,34,1,0,0,0,36,3,1,0,0,0,37,38,5,5,0,0,38,39,
-        3,12,6,0,39,42,3,8,4,0,40,41,5,6,0,0,41,43,3,8,4,0,42,40,1,0,0,0,
-        42,43,1,0,0,0,43,5,1,0,0,0,44,45,5,7,0,0,45,46,3,12,6,0,46,47,5,
-        8,0,0,47,48,3,8,4,0,48,7,1,0,0,0,49,53,5,9,0,0,50,52,3,2,1,0,51,
-        50,1,0,0,0,52,55,1,0,0,0,53,51,1,0,0,0,53,54,1,0,0,0,54,56,1,0,0,
-        0,55,53,1,0,0,0,56,57,5,10,0,0,57,9,1,0,0,0,58,59,5,22,0,0,59,60,
-        5,11,0,0,60,61,3,12,6,0,61,11,1,0,0,0,62,63,6,6,-1,0,63,71,3,16,
-        8,0,64,71,5,23,0,0,65,71,5,22,0,0,66,67,5,2,0,0,67,68,3,12,6,0,68,
-        69,5,3,0,0,69,71,1,0,0,0,70,62,1,0,0,0,70,64,1,0,0,0,70,65,1,0,0,
-        0,70,66,1,0,0,0,71,84,1,0,0,0,72,73,10,6,0,0,73,74,7,0,0,0,74,83,
-        3,12,6,7,75,76,10,5,0,0,76,77,7,1,0,0,77,83,3,12,6,6,78,79,10,1,
-        0,0,79,80,3,14,7,0,80,81,3,12,6,2,81,83,1,0,0,0,82,72,1,0,0,0,82,
-        75,1,0,0,0,82,78,1,0,0,0,83,86,1,0,0,0,84,82,1,0,0,0,84,85,1,0,0,
-        0,85,13,1,0,0,0,86,84,1,0,0,0,87,88,7,2,0,0,88,15,1,0,0,0,89,90,
-        7,3,0,0,90,17,1,0,0,0,7,21,35,42,53,70,82,84
+        4,1,4,1,5,1,5,1,5,1,5,1,6,1,6,1,6,1,6,1,6,1,6,1,6,3,6,70,8,6,1,6,
+        1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,1,6,5,6,82,8,6,10,6,12,6,85,9,6,
+        1,7,1,7,1,8,1,8,1,8,0,1,12,9,0,2,4,6,8,10,12,14,16,0,4,1,0,18,19,
+        1,0,20,21,1,0,12,17,1,0,23,27,93,0,19,1,0,0,0,2,35,1,0,0,0,4,37,
+        1,0,0,0,6,44,1,0,0,0,8,49,1,0,0,0,10,58,1,0,0,0,12,69,1,0,0,0,14,
+        86,1,0,0,0,16,88,1,0,0,0,18,20,3,2,1,0,19,18,1,0,0,0,20,21,1,0,0,
+        0,21,19,1,0,0,0,21,22,1,0,0,0,22,1,1,0,0,0,23,24,5,1,0,0,24,25,5,
+        2,0,0,25,26,3,12,6,0,26,27,5,3,0,0,27,28,5,4,0,0,28,36,1,0,0,0,29,
+        30,3,10,5,0,30,31,5,4,0,0,31,36,1,0,0,0,32,36,3,4,2,0,33,36,3,6,
+        3,0,34,36,5,28,0,0,35,23,1,0,0,0,35,29,1,0,0,0,35,32,1,0,0,0,35,
+        33,1,0,0,0,35,34,1,0,0,0,36,3,1,0,0,0,37,38,5,5,0,0,38,39,3,12,6,
+        0,39,42,3,8,4,0,40,41,5,6,0,0,41,43,3,8,4,0,42,40,1,0,0,0,42,43,
+        1,0,0,0,43,5,1,0,0,0,44,45,5,7,0,0,45,46,3,12,6,0,46,47,5,8,0,0,
+        47,48,3,8,4,0,48,7,1,0,0,0,49,53,5,9,0,0,50,52,3,2,1,0,51,50,1,0,
+        0,0,52,55,1,0,0,0,53,51,1,0,0,0,53,54,1,0,0,0,54,56,1,0,0,0,55,53,
+        1,0,0,0,56,57,5,10,0,0,57,9,1,0,0,0,58,59,5,22,0,0,59,60,5,11,0,
+        0,60,61,3,12,6,0,61,11,1,0,0,0,62,63,6,6,-1,0,63,70,3,16,8,0,64,
+        70,5,22,0,0,65,66,5,2,0,0,66,67,3,12,6,0,67,68,5,3,0,0,68,70,1,0,
+        0,0,69,62,1,0,0,0,69,64,1,0,0,0,69,65,1,0,0,0,70,83,1,0,0,0,71,72,
+        10,5,0,0,72,73,7,0,0,0,73,82,3,12,6,6,74,75,10,4,0,0,75,76,7,1,0,
+        0,76,82,3,12,6,5,77,78,10,1,0,0,78,79,3,14,7,0,79,80,3,12,6,2,80,
+        82,1,0,0,0,81,71,1,0,0,0,81,74,1,0,0,0,81,77,1,0,0,0,82,85,1,0,0,
+        0,83,81,1,0,0,0,83,84,1,0,0,0,84,13,1,0,0,0,85,83,1,0,0,0,86,87,
+        7,2,0,0,87,15,1,0,0,0,88,89,7,3,0,0,89,17,1,0,0,0,7,21,35,42,53,
+        69,81,83
     ]
 
 class MiniLangParser ( Parser ):
@@ -54,15 +54,16 @@ class MiniLangParser ( Parser ):
     literalNames = [ "<INVALID>", "'print'", "'('", "')'", "';'", "'if'", 
                      "'else'", "'while'", "'do'", "'{'", "'}'", "'='", "'=='", 
                      "'!='", "'<'", "'<='", "'>'", "'>='", "'*'", "'/'", 
-                     "'+'", "'-'" ]
+                     "'+'", "'-'", "<INVALID>", "<INVALID>", "<INVALID>", 
+                     "<INVALID>", "<INVALID>", "'null'" ]
 
     symbolicNames = [ "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "<INVALID>", "<INVALID>", "<INVALID>", 
                       "<INVALID>", "<INVALID>", "MUL", "DIV", "ADD", "SUB", 
-                      "ID", "INT", "STRING", "NEWLINE", "COMMENT", "WS", 
-                      "INVALID_CHAR" ]
+                      "ID", "INT", "STRING", "BOOLEAN", "FLOAT", "NULL", 
+                      "NEWLINE", "COMMENT", "WS", "INVALID_CHAR" ]
 
     RULE_prog = 0
     RULE_stat = 1
@@ -102,10 +103,13 @@ class MiniLangParser ( Parser ):
     ID=22
     INT=23
     STRING=24
-    NEWLINE=25
-    COMMENT=26
-    WS=27
-    INVALID_CHAR=28
+    BOOLEAN=25
+    FLOAT=26
+    NULL=27
+    NEWLINE=28
+    COMMENT=29
+    WS=30
+    INVALID_CHAR=31
 
     def __init__(self, input:TokenStream, output:TextIO = sys.stdout):
         super().__init__(input, output)
@@ -166,7 +170,7 @@ class MiniLangParser ( Parser ):
                 self.state = 21 
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & 37748898) != 0)):
+                if not ((((_la) & ~0x3f) == 0 and ((1 << _la) & 272629922) != 0)):
                     break
 
         except RecognitionException as re:
@@ -362,7 +366,7 @@ class MiniLangParser ( Parser ):
                 self.state = 33
                 self.whileBlock()
                 pass
-            elif token in [25]:
+            elif token in [28]:
                 localctx = MiniLangParser.BlankContext(self, localctx)
                 self.enterOuterAlt(localctx, 5)
                 self.state = 34
@@ -554,7 +558,7 @@ class MiniLangParser ( Parser ):
             self.state = 53
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 37748898) != 0):
+            while (((_la) & ~0x3f) == 0 and ((1 << _la) & 272629922) != 0):
                 self.state = 50
                 self.stat()
                 self.state = 55
@@ -787,30 +791,6 @@ class MiniLangParser ( Parser ):
                 return visitor.visitChildren(self)
 
 
-    class IntContext(ExprContext):
-
-        def __init__(self, parser, ctx:ParserRuleContext): # actually a MiniLangParser.ExprContext
-            super().__init__(parser)
-            self.copyFrom(ctx)
-
-        def INT(self):
-            return self.getToken(MiniLangParser.INT, 0)
-
-        def enterRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "enterInt" ):
-                listener.enterInt(self)
-
-        def exitRule(self, listener:ParseTreeListener):
-            if hasattr( listener, "exitInt" ):
-                listener.exitInt(self)
-
-        def accept(self, visitor:ParseTreeVisitor):
-            if hasattr( visitor, "visitInt" ):
-                return visitor.visitInt(self)
-            else:
-                return visitor.visitChildren(self)
-
-
     class ConstantExprContext(ExprContext):
 
         def __init__(self, parser, ctx:ParserRuleContext): # actually a MiniLangParser.ExprContext
@@ -847,10 +827,10 @@ class MiniLangParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 70
+            self.state = 69
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,4,self._ctx)
-            if la_ == 1:
+            token = self._input.LA(1)
+            if token in [23, 24, 25, 26, 27]:
                 localctx = MiniLangParser.ConstantExprContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
@@ -858,38 +838,29 @@ class MiniLangParser ( Parser ):
                 self.state = 63
                 self.constant()
                 pass
-
-            elif la_ == 2:
-                localctx = MiniLangParser.IntContext(self, localctx)
-                self._ctx = localctx
-                _prevctx = localctx
-                self.state = 64
-                self.match(MiniLangParser.INT)
-                pass
-
-            elif la_ == 3:
+            elif token in [22]:
                 localctx = MiniLangParser.IdContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 65
+                self.state = 64
                 self.match(MiniLangParser.ID)
                 pass
-
-            elif la_ == 4:
+            elif token in [2]:
                 localctx = MiniLangParser.ParensContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 66
+                self.state = 65
                 self.match(MiniLangParser.T__1)
-                self.state = 67
+                self.state = 66
                 self.expr(0)
-                self.state = 68
+                self.state = 67
                 self.match(MiniLangParser.T__2)
                 pass
-
+            else:
+                raise NoViableAltException(self)
 
             self._ctx.stop = self._input.LT(-1)
-            self.state = 84
+            self.state = 83
             self._errHandler.sync(self)
             _alt = self._interp.adaptivePredict(self._input,6,self._ctx)
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
@@ -897,60 +868,60 @@ class MiniLangParser ( Parser ):
                     if self._parseListeners is not None:
                         self.triggerExitRuleEvent()
                     _prevctx = localctx
-                    self.state = 82
+                    self.state = 81
                     self._errHandler.sync(self)
                     la_ = self._interp.adaptivePredict(self._input,5,self._ctx)
                     if la_ == 1:
                         localctx = MiniLangParser.MulDivContext(self, MiniLangParser.ExprContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expr)
-                        self.state = 72
-                        if not self.precpred(self._ctx, 6):
+                        self.state = 71
+                        if not self.precpred(self._ctx, 5):
                             from antlr4.error.Errors import FailedPredicateException
-                            raise FailedPredicateException(self, "self.precpred(self._ctx, 6)")
-                        self.state = 73
+                            raise FailedPredicateException(self, "self.precpred(self._ctx, 5)")
+                        self.state = 72
                         _la = self._input.LA(1)
                         if not(_la==18 or _la==19):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 74
-                        self.expr(7)
+                        self.state = 73
+                        self.expr(6)
                         pass
 
                     elif la_ == 2:
                         localctx = MiniLangParser.AddSubContext(self, MiniLangParser.ExprContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expr)
-                        self.state = 75
-                        if not self.precpred(self._ctx, 5):
+                        self.state = 74
+                        if not self.precpred(self._ctx, 4):
                             from antlr4.error.Errors import FailedPredicateException
-                            raise FailedPredicateException(self, "self.precpred(self._ctx, 5)")
-                        self.state = 76
+                            raise FailedPredicateException(self, "self.precpred(self._ctx, 4)")
+                        self.state = 75
                         _la = self._input.LA(1)
                         if not(_la==20 or _la==21):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 77
-                        self.expr(6)
+                        self.state = 76
+                        self.expr(5)
                         pass
 
                     elif la_ == 3:
                         localctx = MiniLangParser.CompareContext(self, MiniLangParser.ExprContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expr)
-                        self.state = 78
+                        self.state = 77
                         if not self.precpred(self._ctx, 1):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 1)")
-                        self.state = 79
+                        self.state = 78
                         self.compareOp()
-                        self.state = 80
+                        self.state = 79
                         self.expr(2)
                         pass
 
              
-                self.state = 86
+                self.state = 85
                 self._errHandler.sync(self)
                 _alt = self._interp.adaptivePredict(self._input,6,self._ctx)
 
@@ -998,7 +969,7 @@ class MiniLangParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 87
+            self.state = 86
             _la = self._input.LA(1)
             if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 258048) != 0)):
                 self._errHandler.recoverInline(self)
@@ -1027,6 +998,15 @@ class MiniLangParser ( Parser ):
         def STRING(self):
             return self.getToken(MiniLangParser.STRING, 0)
 
+        def BOOLEAN(self):
+            return self.getToken(MiniLangParser.BOOLEAN, 0)
+
+        def FLOAT(self):
+            return self.getToken(MiniLangParser.FLOAT, 0)
+
+        def NULL(self):
+            return self.getToken(MiniLangParser.NULL, 0)
+
         def getRuleIndex(self):
             return MiniLangParser.RULE_constant
 
@@ -1054,9 +1034,9 @@ class MiniLangParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 89
+            self.state = 88
             _la = self._input.LA(1)
-            if not(_la==23 or _la==24):
+            if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 260046848) != 0)):
                 self._errHandler.recoverInline(self)
             else:
                 self._errHandler.reportMatch(self)
@@ -1083,11 +1063,11 @@ class MiniLangParser ( Parser ):
 
     def expr_sempred(self, localctx:ExprContext, predIndex:int):
             if predIndex == 0:
-                return self.precpred(self._ctx, 6)
+                return self.precpred(self._ctx, 5)
          
 
             if predIndex == 1:
-                return self.precpred(self._ctx, 5)
+                return self.precpred(self._ctx, 4)
          
 
             if predIndex == 2:

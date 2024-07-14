@@ -84,11 +84,6 @@ class MiniLangVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by MiniLangParser#int.
-    def visitInt(self, ctx:MiniLangParser.IntContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by MiniLangParser#constantExpr.
     def visitConstantExpr(self, ctx:MiniLangParser.ConstantExprContext):
         return self.visitChildren(ctx)

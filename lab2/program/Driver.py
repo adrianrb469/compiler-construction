@@ -13,6 +13,7 @@ class MiniLangErrorListener(ErrorListener):
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         print(f"Syntax Error: {msg} at line {line}, column {column}")
 
+
 class MiniLangCustomVisitor(MiniLangVisitor):
     def __init__(self):
         self.memory = {}  # To store variable assignments
@@ -25,44 +26,44 @@ class MiniLangCustomVisitor(MiniLangVisitor):
 
         if value is None:
             print(f"Error: Invalid value for print statement")
-            return  
-        
+            return
+
         print(value)
         return value
 
     def visitAssignment(self, ctx: MiniLangParser.AssignmentContext):
         id = ctx.ID().getText()
-        value = self.visit(ctx.expr())  
+        value = self.visit(ctx.expr())
         self.memory[id] = value
         return value
-    
+
     def visitIfBlock(self, ctx: MiniLangParser.IfBlockContext):
         condition = self.visit(ctx.expr())
         if condition:
             self.visit(ctx.block(0))
         elif ctx.block(1) is not None:
             self.visit(ctx.block(1))
-        
+
     def visitBlock(self, ctx: MiniLangParser.BlockContext):
         return self.visitChildren(ctx)
-    
+
     def visitCompare(self, ctx: MiniLangParser.CompareContext):
         left = self.visit(ctx.expr(0))
         right = self.visit(ctx.expr(1))
         op = ctx.getChild(1).getText()
-        if op == '==':
+        if op == "==":
             return left == right
-        elif op == '!=':
+        elif op == "!=":
             return left != right
-        elif op == '<':
+        elif op == "<":
             return left < right
-        elif op == '<=':
+        elif op == "<=":
             return left <= right
-        elif op == '>':
+        elif op == ">":
             return left > right
-        elif op == '>=':
+        elif op == ">=":
             return left >= right
-        
+
     def visitWhileBlock(self, ctx: MiniLangParser.WhileBlockContext):
         while self.visit(ctx.expr()):
             self.visit(ctx.block())
@@ -78,39 +79,70 @@ class MiniLangCustomVisitor(MiniLangVisitor):
     def visitAddSub(self, ctx: MiniLangParser.AddSubContext):
         left = self.visit(ctx.expr(0))
         right = self.visit(ctx.expr(1))
-        if ctx.getChild(1).symbol.type == MiniLangParser.ADD:
-            return left + right
-        else:
-            return left - right
 
-    def visitInt(self, ctx: MiniLangParser.IntContext):
-        return int(ctx.INT().getText())
-    
+        operator = ctx.getChild(1).symbol.type
+
+        if type(left) == int and type(right) == float:
+            if operator == MiniLangParser.ADD:
+                return left + right
+            elif operator == MiniLangParser.SUB:
+                return left - right
+
+        if type(left) == float and type(right) == int:
+            if operator == MiniLangParser.ADD:
+                return left + right
+            elif operator == MiniLangParser.SUB:
+                return left - right
+
+        if type(left) == int and type(right) == int:
+            if operator == MiniLangParser.ADD:
+                return left + right
+            elif operator == MiniLangParser.SUB:
+                return left - right
+
+        raise Exception(f"Cannot add {type(left).__name__} and {type(right).__name__}")
+
     def visitConstant(self, ctx: MiniLangParser.ConstantContext):
         if ctx.INT():
             return int(ctx.INT().getText())
-        elif ctx.STRING():
+
+        if ctx.BOOLEAN():
+            return ctx.BOOLEAN().getText() == "true"
+
+        if ctx.FLOAT():
+            return float(ctx.FLOAT().getText())
+
+        if ctx.NULL():
+            return None
+
+        if ctx.STRING():
             return ctx.STRING().getText().strip('"')
-        return None
+
+        raise Exception(f"Invalid constant: {ctx.getText()}")
 
     def visitId(self, ctx: MiniLangParser.IdContext):
         id = ctx.ID().getText()
         if id in self.memory:
             return self.memory[id]
-        return 0  # Default value if variable not found
+        else:
+            raise Exception(f"Undefined variable: {id}")
 
     def visitParens(self, ctx: MiniLangParser.ParensContext):
         return self.visit(ctx.expr())
+
 
 def main(argv):
     input_stream = FileStream(argv[1])
     lexer = MiniLangLexer(input_stream)
     stream = CommonTokenStream(lexer)
     parser = MiniLangParser(stream)
-    tree = parser.prog()  # We are using 'prog' since this is the starting rule based on our MiniLang grammar, yay!
-    
+    tree = (
+        parser.prog()
+    )  # We are using 'prog' since this is the starting rule based on our MiniLang grammar, yay!
+
     visitor = MiniLangCustomVisitor()
     visitor.visit(tree)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main(sys.argv)

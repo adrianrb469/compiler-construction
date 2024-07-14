@@ -143,15 +143,6 @@ class MiniLangListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by MiniLangParser#int.
-    def enterInt(self, ctx:MiniLangParser.IntContext):
-        pass
-
-    # Exit a parse tree produced by MiniLangParser#int.
-    def exitInt(self, ctx:MiniLangParser.IntContext):
-        pass
-
-
     # Enter a parse tree produced by MiniLangParser#constantExpr.
     def enterConstantExpr(self, ctx:MiniLangParser.ConstantExprContext):
         pass
