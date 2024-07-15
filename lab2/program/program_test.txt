@@ -1,19 +1,7 @@
-x=5;
-
-print("Ready for takeoff!");
-
-while x>0 do {
-    x = x - 1;
-    print(x);
+func add(a, b) {
+    return a + b;
 }
 
-if x!=0 {
-    print("Ship exploded!");
-} else {
-    x = x-1;
-    print("The value of x is now:");
-    print(x);
-    if x < 0 {
-        print("Ship is safe!");
-    }
-}
+result1 = add(3, 4);
+
+print(result1);

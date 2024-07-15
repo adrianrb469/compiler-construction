@@ -16,7 +16,7 @@ class MiniLangErrorListener(ErrorListener):
 
 class MiniLangCustomVisitor(MiniLangVisitor):
     def __init__(self):
-        self.memory = {}  # To store variable assignments
+        self.memory = {'variables': {}, 'functions': {}}  # To store variable assignments
 
     def visitProg(self, ctx: MiniLangParser.ProgContext):
         return self.visitChildren(ctx)
@@ -130,6 +130,61 @@ class MiniLangCustomVisitor(MiniLangVisitor):
     def visitParens(self, ctx: MiniLangParser.ParensContext):
         return self.visit(ctx.expr())
 
+    def visitFuncDecl(self, ctx: MiniLangParser):
+        func_name = ctx.ID().getText()
+        params = [param.ID().getText() for param in ctx.param()]
+        block = ctx.block()
+        self.memory['functions'][func_name] = {'params': params, 'block': block}
+
+    def visitFuncCall(self, ctx: MiniLangParser):
+        func_name = ctx.ID().getText()
+        if func_name not in self.memory['functions']:
+            raise Exception(f"Undefined function: {func_name}")
+
+        func = self.memory['functions'][func_name]
+        args = [self.visit(expr) for expr in ctx.expr()]
+
+        if len(args) != len(func['params']):
+            raise Exception(f"Function {func_name} expects {len(func['params'])} arguments, but got {len(args)}")
+
+        # Create a new scope for the function
+        old_memory = self.memory['variables'].copy()
+        self.memory['variables'] = {param: arg for param, arg in zip(func['params'], args)}
+
+        # Execute the function body
+        result = None
+        try:
+            self.visit(func['block'])
+        except ReturnValue as rv:
+            result = rv.value
+
+        # Restore the old scope
+        self.memory['variables'] = old_memory
+
+        return result
+
+    def visitReturnStat(self, ctx: MiniLangParser):
+        value = self.visit(ctx.expr())
+        raise ReturnValue(value)
+
+    def visitId(self, ctx: MiniLangParser.IdContext):
+        id = ctx.ID().getText()
+        if id in self.memory['variables']:
+            return self.memory['variables'][id]
+        elif id in self.memory['functions']:
+            return id  # Return the function name, it will be handled in visitFuncCall
+        else:
+            raise Exception(f"Undefined variable or function: {id}")
+
+    def visitPrintExpr(self, ctx: MiniLangParser.PrintExprContext):
+        value = self.visit(ctx.expr())
+        print(value)
+        return value
+
+class ReturnValue(Exception):
+    def __init__(self, value):
+        self.value = value
+
 class EvalVisitor(MiniLangVisitor):
 
     def visitComparisonExpr(self, ctx):
@@ -172,7 +227,6 @@ def main(argv):
 
     visitor = MiniLangCustomVisitor()
     visitor.visit(tree)
-
 
 if __name__ == "__main__":
     main(sys.argv)
