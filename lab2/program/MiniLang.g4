@@ -48,5 +48,25 @@ COMMENT: '//' ~[\r\n]* -> skip; // match inline comments
 
 WS: [ \t]+ -> skip; // toss out whitespace
 
+EQ: '==';
+NEQ: '!=';
+LT: '<';
+GT: '>';
+LTE: '<=';
+GTE: '>=';
+
+comparisonExpr
+    : expression EQ expression
+    | expression NEQ expression
+    | expression LT expression
+    | expression GT expression
+    | expression LTE expression
+    | expression GTE expression
+    ;
+
+expression
+    : comparisonExpr
+    ;
+
 INVALID_CHAR:
 	.; // match any single character that is not in the grammar

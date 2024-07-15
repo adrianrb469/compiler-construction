@@ -1,19 +1,10 @@
-x=5;
+a = 5;
+b = 10;
 
-print("Ready for takeoff!");
-
-while x>0 do {
-    x = x - 1;
-    print(x);
-}
-
-if x!=0 {
-    print("Ship exploded!");
+if (a == b) {
+    print("a & b are equal");
+} if (a > b) {
+    print("a is greater than b");
 } else {
-    x = x-1;
-    print("The value of x is now:");
-    print(x);
-    if x < 0 {
-        print("Ship is safe!");
-    }
+    print("a isn't greater than b");
 }

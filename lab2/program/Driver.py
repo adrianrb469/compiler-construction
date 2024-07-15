@@ -130,6 +130,36 @@ class MiniLangCustomVisitor(MiniLangVisitor):
     def visitParens(self, ctx: MiniLangParser.ParensContext):
         return self.visit(ctx.expr())
 
+class EvalVisitor(MiniLangVisitor):
+
+    def visitComparisonExpr(self, ctx):
+        left = self.visit(ctx.expression(0))
+        right = self.visit(ctx.expression(1))
+
+        if ctx.EQ():
+            return left == right
+        elif ctx.NEQ():
+            return left != right
+        elif ctx.LT():
+            return left < right
+        elif ctx.GT():
+            return left > right
+        elif ctx.LTE():
+            return left <= right
+        elif ctx.GTE():
+            return left >= right
+        else:
+            raise Exception("Unknown comparison operator")
+
+    # Ensure visitExpression can handle comparisonExpr
+    def visitExpression(self, ctx):
+        if ctx.comparisonExpr():
+            return self.visitComparisonExpr(ctx.comparisonExpr())
+        else:
+            # Handle other expression types
+            # TODO Implement handling of other expression types
+            return self.visitChildren(ctx)
+
 
 def main(argv):
     input_stream = FileStream(argv[1])
