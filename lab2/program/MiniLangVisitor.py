@@ -39,6 +39,11 @@ class MiniLangVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by MiniLangParser#unrecognizedToken.
+    def visitUnrecognizedToken(self, ctx:MiniLangParser.UnrecognizedTokenContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by MiniLangParser#ifBlock.
     def visitIfBlock(self, ctx:MiniLangParser.IfBlockContext):
         return self.visitChildren(ctx)

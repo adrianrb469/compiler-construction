@@ -6,17 +6,20 @@ from MiniLangVisitor import MiniLangVisitor
 from antlr4.error.ErrorListener import ErrorListener
 
 
-class MiniLangErrorListener(ErrorListener):
-    def __init__(self):
-        super(MiniLangErrorListener, self).__init__()
+# class MiniLangErrorListener(ErrorListener):
+#     def __init__(self):
+#         super(MiniLangErrorListener, self).__init__()
 
-    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
-        print(f"Syntax Error: {msg} at line {line}, column {column}")
+#     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+#         print(f"Syntax Error: {msg} at line {line}, column {column}")
 
 
 class MiniLangCustomVisitor(MiniLangVisitor):
     def __init__(self):
-        self.memory = {'variables': {}, 'functions': {}}  # To store variable assignments
+        self.memory = {
+            "variables": {},
+            "functions": {},
+        }  # To store variable assignments
 
     def visitProg(self, ctx: MiniLangParser.ProgContext):
         return self.visitChildren(ctx)
@@ -29,9 +32,10 @@ class MiniLangCustomVisitor(MiniLangVisitor):
             return
 
         print(value)
-        return value
+        return None
 
     def visitAssignment(self, ctx: MiniLangParser.AssignmentContext):
+
         id = ctx.ID().getText()
         value = self.visit(ctx.expr())
         self.memory[id] = value
@@ -130,36 +134,43 @@ class MiniLangCustomVisitor(MiniLangVisitor):
     def visitParens(self, ctx: MiniLangParser.ParensContext):
         return self.visit(ctx.expr())
 
+    def visitUnrecognizedToken(self, ctx: MiniLangParser.UnrecognizedTokenContext):
+        raise Exception(f"Unrecognized token: {ctx.getText()}")
+
     def visitFuncDecl(self, ctx: MiniLangParser):
         func_name = ctx.ID().getText()
         params = [param.ID().getText() for param in ctx.param()]
         block = ctx.block()
-        self.memory['functions'][func_name] = {'params': params, 'block': block}
+        self.memory["functions"][func_name] = {"params": params, "block": block}
 
     def visitFuncCall(self, ctx: MiniLangParser):
         func_name = ctx.ID().getText()
-        if func_name not in self.memory['functions']:
+        if func_name not in self.memory["functions"]:
             raise Exception(f"Undefined function: {func_name}")
 
-        func = self.memory['functions'][func_name]
+        func = self.memory["functions"][func_name]
         args = [self.visit(expr) for expr in ctx.expr()]
 
-        if len(args) != len(func['params']):
-            raise Exception(f"Function {func_name} expects {len(func['params'])} arguments, but got {len(args)}")
+        if len(args) != len(func["params"]):
+            raise Exception(
+                f"Function {func_name} expects {len(func['params'])} arguments, but got {len(args)}"
+            )
 
         # Create a new scope for the function
-        old_memory = self.memory['variables'].copy()
-        self.memory['variables'] = {param: arg for param, arg in zip(func['params'], args)}
+        old_memory = self.memory["variables"].copy()
+        self.memory["variables"] = {
+            param: arg for param, arg in zip(func["params"], args)
+        }
 
         # Execute the function body
         result = None
         try:
-            self.visit(func['block'])
+            self.visit(func["block"])
         except ReturnValue as rv:
             result = rv.value
 
         # Restore the old scope
-        self.memory['variables'] = old_memory
+        self.memory["variables"] = old_memory
 
         return result
 
@@ -169,9 +180,9 @@ class MiniLangCustomVisitor(MiniLangVisitor):
 
     def visitId(self, ctx: MiniLangParser.IdContext):
         id = ctx.ID().getText()
-        if id in self.memory['variables']:
-            return self.memory['variables'][id]
-        elif id in self.memory['functions']:
+        if id in self.memory["variables"]:
+            return self.memory["variables"][id]
+        elif id in self.memory["functions"]:
             return id  # Return the function name, it will be handled in visitFuncCall
         else:
             raise Exception(f"Undefined variable or function: {id}")
@@ -181,9 +192,11 @@ class MiniLangCustomVisitor(MiniLangVisitor):
         print(value)
         return value
 
+
 class ReturnValue(Exception):
     def __init__(self, value):
         self.value = value
+
 
 class EvalVisitor(MiniLangVisitor):
 
@@ -219,6 +232,8 @@ class EvalVisitor(MiniLangVisitor):
 def main(argv):
     input_stream = FileStream(argv[1])
     lexer = MiniLangLexer(input_stream)
+    # lexer.removeErrorListeners()
+    # lexer.addErrorListener(MiniLangErrorListener())
     stream = CommonTokenStream(lexer)
     parser = MiniLangParser(stream)
     tree = (
@@ -227,6 +242,7 @@ def main(argv):
 
     visitor = MiniLangCustomVisitor()
     visitor.visit(tree)
+
 
 if __name__ == "__main__":
     main(sys.argv)

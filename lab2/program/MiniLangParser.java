@@ -1,4 +1,4 @@
-// Generated from /Users/adrian/Documents/University/2024/s2/compilers/compiler-construction/lab2/program/MiniLang.g4 by ANTLR 4.13.1
+// Generated from MiniLang.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -18,8 +18,8 @@ public class MiniLangParser extends Parser {
 	public static final int
 		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9, 
 		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17, 
-		INT=18, FLOAT=19, STRING=20, BOOLEAN=21, NULL=22, MUL=23, DIV=24, ADD=25, 
-		SUB=26, ID=27, NEWLINE=28, COMMENT=29, WS=30, INVALID_CHAR=31;
+		MUL=18, DIV=19, ADD=20, SUB=21, ID=22, INT=23, STRING=24, BOOLEAN=25, 
+		FLOAT=26, NULL=27, NEWLINE=28, COMMENT=29, WS=30, INVALID_CHAR=31;
 	public static final int
 		RULE_prog = 0, RULE_stat = 1, RULE_ifBlock = 2, RULE_whileBlock = 3, RULE_block = 4, 
 		RULE_assignment = 5, RULE_expr = 6, RULE_compareOp = 7, RULE_constant = 8;
@@ -34,16 +34,16 @@ public class MiniLangParser extends Parser {
 	private static String[] makeLiteralNames() {
 		return new String[] {
 			null, "'print'", "'('", "')'", "';'", "'if'", "'else'", "'while'", "'do'", 
-			"'{'", "'}'", "'='", "'=='", "'!='", "'<'", "'<='", "'>'", "'>='", null, 
-			null, null, null, "'null'", "'*'", "'/'", "'+'", "'-'"
+			"'{'", "'}'", "'='", "'=='", "'!='", "'<'", "'<='", "'>'", "'>='", "'*'", 
+			"'/'", "'+'", "'-'", null, null, null, null, null, "'null'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
 			null, null, null, null, null, null, null, null, null, null, null, null, 
-			null, null, null, null, null, null, "INT", "FLOAT", "STRING", "BOOLEAN", 
-			"NULL", "MUL", "DIV", "ADD", "SUB", "ID", "NEWLINE", "COMMENT", "WS", 
+			null, null, null, null, null, null, "MUL", "DIV", "ADD", "SUB", "ID", 
+			"INT", "STRING", "BOOLEAN", "FLOAT", "NULL", "NEWLINE", "COMMENT", "WS", 
 			"INVALID_CHAR"
 		};
 	}
@@ -110,6 +110,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_prog; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterProg(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitProg(this);
+		}
 	}
 
 	public final ProgContext prog() throws RecognitionException {
@@ -132,7 +140,7 @@ public class MiniLangParser extends Parser {
 				setState(21); 
 				_errHandler.sync(this);
 				_la = _input.LA(1);
-			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 2550136994L) != 0) );
+			} while ( (((_la) & ~0x3f) == 0 && ((1L << _la) & 2420113570L) != 0) );
 			}
 		}
 		catch (RecognitionException re) {
@@ -164,16 +172,40 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(IfBlockContext.class,0);
 		}
 		public IfStatContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterIfStat(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitIfStat(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class BlankContext extends StatContext {
 		public TerminalNode NEWLINE() { return getToken(MiniLangParser.NEWLINE, 0); }
 		public BlankContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterBlank(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitBlank(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class UnrecognizedTokenContext extends StatContext {
 		public TerminalNode INVALID_CHAR() { return getToken(MiniLangParser.INVALID_CHAR, 0); }
 		public UnrecognizedTokenContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterUnrecognizedToken(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitUnrecognizedToken(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class PrintExprContext extends StatContext {
@@ -181,6 +213,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(ExprContext.class,0);
 		}
 		public PrintExprContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterPrintExpr(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitPrintExpr(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class AssignContext extends StatContext {
@@ -188,6 +228,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(AssignmentContext.class,0);
 		}
 		public AssignContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterAssign(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitAssign(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class WhileStatContext extends StatContext {
@@ -195,6 +243,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(WhileBlockContext.class,0);
 		}
 		public WhileStatContext(StatContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterWhileStat(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitWhileStat(this);
+		}
 	}
 
 	public final StatContext stat() throws RecognitionException {
@@ -292,6 +348,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_ifBlock; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterIfBlock(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitIfBlock(this);
+		}
 	}
 
 	public final IfBlockContext ifBlock() throws RecognitionException {
@@ -344,6 +408,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_whileBlock; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterWhileBlock(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitWhileBlock(this);
+		}
 	}
 
 	public final WhileBlockContext whileBlock() throws RecognitionException {
@@ -385,6 +457,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_block; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterBlock(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitBlock(this);
+		}
 	}
 
 	public final BlockContext block() throws RecognitionException {
@@ -399,7 +479,7 @@ public class MiniLangParser extends Parser {
 			setState(54);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 2550136994L) != 0)) {
+			while ((((_la) & ~0x3f) == 0 && ((1L << _la) & 2420113570L) != 0)) {
 				{
 				{
 				setState(51);
@@ -435,6 +515,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_assignment; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterAssignment(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitAssignment(this);
+		}
 	}
 
 	public final AssignmentContext assignment() throws RecognitionException {
@@ -480,6 +568,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(ExprContext.class,0);
 		}
 		public ParensContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterParens(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitParens(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class CompareContext extends ExprContext {
@@ -493,6 +589,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(CompareOpContext.class,0);
 		}
 		public CompareContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterCompare(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitCompare(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class MulDivContext extends ExprContext {
@@ -505,6 +609,14 @@ public class MiniLangParser extends Parser {
 		public TerminalNode MUL() { return getToken(MiniLangParser.MUL, 0); }
 		public TerminalNode DIV() { return getToken(MiniLangParser.DIV, 0); }
 		public MulDivContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterMulDiv(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitMulDiv(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class AddSubContext extends ExprContext {
@@ -517,11 +629,27 @@ public class MiniLangParser extends Parser {
 		public TerminalNode ADD() { return getToken(MiniLangParser.ADD, 0); }
 		public TerminalNode SUB() { return getToken(MiniLangParser.SUB, 0); }
 		public AddSubContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterAddSub(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitAddSub(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class IdContext extends ExprContext {
 		public TerminalNode ID() { return getToken(MiniLangParser.ID, 0); }
 		public IdContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterId(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitId(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class ConstantExprContext extends ExprContext {
@@ -529,6 +657,14 @@ public class MiniLangParser extends Parser {
 			return getRuleContext(ConstantContext.class,0);
 		}
 		public ConstantExprContext(ExprContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterConstantExpr(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitConstantExpr(this);
+		}
 	}
 
 	public final ExprContext expr() throws RecognitionException {
@@ -551,9 +687,9 @@ public class MiniLangParser extends Parser {
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case INT:
-			case FLOAT:
 			case STRING:
 			case BOOLEAN:
+			case FLOAT:
 			case NULL:
 				{
 				_localctx = new ConstantExprContext(_localctx);
@@ -679,6 +815,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_compareOp; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterCompareOp(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitCompareOp(this);
+		}
 	}
 
 	public final CompareOpContext compareOp() throws RecognitionException {
@@ -722,6 +866,14 @@ public class MiniLangParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_constant; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).enterConstant(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof MiniLangListener ) ((MiniLangListener)listener).exitConstant(this);
+		}
 	}
 
 	public final ConstantContext constant() throws RecognitionException {
@@ -733,7 +885,7 @@ public class MiniLangParser extends Parser {
 			{
 			setState(89);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 8126464L) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & 260046848L) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -790,8 +942,8 @@ public class MiniLangParser extends Parser {
 		"\u0001\u0006\u0001\u0006\u0001\u0006\u0001\u0006\u0005\u0006S\b\u0006"+
 		"\n\u0006\f\u0006V\t\u0006\u0001\u0007\u0001\u0007\u0001\b\u0001\b\u0001"+
 		"\b\u0000\u0001\f\t\u0000\u0002\u0004\u0006\b\n\f\u000e\u0010\u0000\u0004"+
-		"\u0001\u0000\u0017\u0018\u0001\u0000\u0019\u001a\u0001\u0000\f\u0011\u0001"+
-		"\u0000\u0012\u0016_\u0000\u0013\u0001\u0000\u0000\u0000\u0002$\u0001\u0000"+
+		"\u0001\u0000\u0012\u0013\u0001\u0000\u0014\u0015\u0001\u0000\f\u0011\u0001"+
+		"\u0000\u0017\u001b_\u0000\u0013\u0001\u0000\u0000\u0000\u0002$\u0001\u0000"+
 		"\u0000\u0000\u0004&\u0001\u0000\u0000\u0000\u0006-\u0001\u0000\u0000\u0000"+
 		"\b2\u0001\u0000\u0000\u0000\n;\u0001\u0000\u0000\u0000\fF\u0001\u0000"+
 		"\u0000\u0000\u000eW\u0001\u0000\u0000\u0000\u0010Y\u0001\u0000\u0000\u0000"+
@@ -814,9 +966,9 @@ public class MiniLangParser extends Parser {
 		"\u000026\u0005\t\u0000\u000035\u0003\u0002\u0001\u000043\u0001\u0000\u0000"+
 		"\u000058\u0001\u0000\u0000\u000064\u0001\u0000\u0000\u000067\u0001\u0000"+
 		"\u0000\u000079\u0001\u0000\u0000\u000086\u0001\u0000\u0000\u00009:\u0005"+
-		"\n\u0000\u0000:\t\u0001\u0000\u0000\u0000;<\u0005\u001b\u0000\u0000<="+
+		"\n\u0000\u0000:\t\u0001\u0000\u0000\u0000;<\u0005\u0016\u0000\u0000<="+
 		"\u0005\u000b\u0000\u0000=>\u0003\f\u0006\u0000>\u000b\u0001\u0000\u0000"+
-		"\u0000?@\u0006\u0006\uffff\uffff\u0000@G\u0003\u0010\b\u0000AG\u0005\u001b"+
+		"\u0000?@\u0006\u0006\uffff\uffff\u0000@G\u0003\u0010\b\u0000AG\u0005\u0016"+
 		"\u0000\u0000BC\u0005\u0002\u0000\u0000CD\u0003\f\u0006\u0000DE\u0005\u0003"+
 		"\u0000\u0000EG\u0001\u0000\u0000\u0000F?\u0001\u0000\u0000\u0000FA\u0001"+
 		"\u0000\u0000\u0000FB\u0001\u0000\u0000\u0000GT\u0001\u0000\u0000\u0000"+

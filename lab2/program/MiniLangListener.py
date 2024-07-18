@@ -62,6 +62,15 @@ class MiniLangListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by MiniLangParser#unrecognizedToken.
+    def enterUnrecognizedToken(self, ctx:MiniLangParser.UnrecognizedTokenContext):
+        pass
+
+    # Exit a parse tree produced by MiniLangParser#unrecognizedToken.
+    def exitUnrecognizedToken(self, ctx:MiniLangParser.UnrecognizedTokenContext):
+        pass
+
+
     # Enter a parse tree produced by MiniLangParser#ifBlock.
     def enterIfBlock(self, ctx:MiniLangParser.IfBlockContext):
         pass
