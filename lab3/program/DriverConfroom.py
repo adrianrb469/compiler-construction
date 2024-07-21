@@ -68,6 +68,25 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             ),
         )
 
+        # Check for invalid start and end times
+        if datetime.datetime.strptime(
+            new_event.start_time, "%H:%M"
+        ) >= datetime.datetime.strptime(new_event.end_time, "%H:%M"):
+            print(
+                f"Error: Event '{new_event.name}' has an end time that is earlier than its start time."
+            )
+            return
+
+        # Maximum event duration is 4 hours
+        if (
+            datetime.datetime.strptime(new_event.end_time, "%H:%M")
+            - datetime.datetime.strptime(new_event.start_time, "%H:%M")
+        ).seconds > 4 * 60 * 60:
+            print(
+                f"Error: Event '{new_event.name}' exceeds the maximum duration of 4 hours."
+            )
+            return
+
         # Check for overlapping events
         for event in self.events:
             if event.overlaps_with(new_event):
