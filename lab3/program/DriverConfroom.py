@@ -1,3 +1,4 @@
+import datetime
 import sys
 from antlr4 import *
 from ConfRoomSchedulerLexer import ConfRoomSchedulerLexer
@@ -28,9 +29,20 @@ class Event:
 
     def __str__(self):
         return (
-            f"ID: {self.id}, Event: {self.name}, Room: {self.room}, Person: {self.person_name}, "
+            f"Event: {self.name}, ID: {self.id}, Room: {self.room}, Person: {self.person_name}, "
             f"Description: {self.description}, Date: {self.date}, Start Time: {self.start_time}, End Time: {self.end_time}"
         )
+
+    def overlaps_with(self, other_event):
+        if self.room != other_event.room or self.date != other_event.date:
+            return False
+
+        start1 = datetime.datetime.strptime(self.start_time, "%H:%M")
+        end1 = datetime.datetime.strptime(self.end_time, "%H:%M")
+        start2 = datetime.datetime.strptime(other_event.start_time, "%H:%M")
+        end2 = datetime.datetime.strptime(other_event.end_time, "%H:%M")
+
+        return start1 < end2 and start2 < end1
 
 
 class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
@@ -41,7 +53,7 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
     def enterReserveStat(self, ctx: ConfRoomSchedulerParser.ReserveStatContext):
         reservation = ctx.reserve()
 
-        event = Event(
+        new_event = Event(
             len(self.events) + 1,
             reservation.NAME().getText(),
             reservation.STRING(0).getText().strip('"'),
@@ -56,7 +68,15 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             ),
         )
 
-        self.events.append(event)
+        # Check for overlapping events
+        for event in self.events:
+            if event.overlaps_with(new_event):
+                print(
+                    f"Error: Event '{new_event.name}' overlaps with existing event '{event.name}' in room '{new_event.room}' on '{new_event.date}'."
+                )
+                return
+
+        self.events.append(new_event)
 
         for e in self.events:
             print(e.__str__())
