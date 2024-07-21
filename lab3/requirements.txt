@@ -1,1 +1,5 @@
 antlr4-python3-runtime==4.13.0
+schedule
+pytz
+
+RESERVE Adrian ROOM a1 AT 20/07/2024 FROM 22:35 TO 23:59 EVENT "Noodles"

@@ -1,10 +1,10 @@
 grammar ConfRoomScheduler;
 
-prog: stat+;
+prog: stat+ EOF;
 
 stat:
-	reserve NEWLINE		# reserveStat
-	| cancel NEWLINE	# cancelStat
+	reserve NEWLINE?	# reserveStat
+	| cancel NEWLINE?	# cancelStat
 	| NEWLINE			# blank;
 
 reserve:
@@ -24,5 +24,3 @@ NEWLINE: '\r'? '\n';
 WS: [ \t]+ -> skip;
 
 fragment DIGIT: [0-9];
-
-// antlr -Dlanguage=Python3 MiniLang.g4 python3 DriverConfroom.py program_test_confroom.txt
