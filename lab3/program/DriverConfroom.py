@@ -4,9 +4,21 @@ from ConfRoomSchedulerLexer import ConfRoomSchedulerLexer
 from ConfRoomSchedulerParser import ConfRoomSchedulerParser
 from ConfRoomSchedulerListener import ConfRoomSchedulerListener
 
-class Event():
-    def __init__(self, id, event_name, room, date, start_time, end_time, event_description=None):
+
+class Event:
+    def __init__(
+        self,
+        id,
+        person_name,
+        event_name,
+        room,
+        date,
+        start_time,
+        end_time,
+        event_description=None,
+    ):
         self.id = id
+        self.person_name = person_name
         self.name = event_name
         self.description = event_description
         self.room = room
@@ -15,7 +27,11 @@ class Event():
         self.end_time = end_time
 
     def __str__(self):
-        return f"Event: {self.name}, id: {self.id}, Room: {self.room}, Description: {self.description}, Date: {self.date}, Start Time: {self.start_time}, End Time: {self.end_time}"
+        return (
+            f"ID: {self.id}, Event: {self.name}, Room: {self.room}, Person: {self.person_name}, "
+            f"Description: {self.description}, Date: {self.date}, Start Time: {self.start_time}, End Time: {self.end_time}"
+        )
+
 
 class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
 
@@ -27,12 +43,17 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
 
         event = Event(
             len(self.events) + 1,
-            reservation.STRING(0),
-            reservation.ID(),
-            reservation.DATE(),
-            reservation.TIME(0),
-            reservation.TIME(1),
-            reservation.STRING(1),
+            reservation.NAME().getText(),
+            reservation.STRING(0).getText().strip('"'),
+            reservation.ID().getText(),
+            reservation.DATE().getText(),
+            reservation.TIME(0).getText(),
+            reservation.TIME(1).getText(),
+            (
+                reservation.STRING(1).getText().strip('"')
+                if reservation.STRING(1)
+                else None
+            ),
         )
 
         self.events.append(event)
@@ -60,17 +81,20 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             print(e.__str__())
         print()
 
+
 def main(argv):
     input_stream = FileStream(argv[1])
     lexer = ConfRoomSchedulerLexer(input_stream)
     stream = CommonTokenStream(lexer)
     parser = ConfRoomSchedulerParser(stream)
-    tree = parser.prog()  # We are using 'prog' since this is the starting rule based on our ConfRoomScheduler grammar, yay!
+    tree = (
+        parser.prog()
+    )  # We are using 'prog' since this is the starting rule based on our ConfRoomScheduler grammar, yay!
 
     semanticchecker = ConfRoomSchedulerCustomListener()
     walker = ParseTreeWalker()
     walker.walk(semanticchecker, tree)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

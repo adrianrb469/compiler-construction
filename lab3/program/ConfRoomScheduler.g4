@@ -1,25 +1,28 @@
 grammar ConfRoomScheduler;
 
-prog: stat+ ;
+prog: stat+;
 
-stat: reserve NEWLINE                # reserveStat
-    | cancel NEWLINE                 # cancelStat
-    | NEWLINE                        # blank
-    ;
+stat:
+	reserve NEWLINE		# reserveStat
+	| cancel NEWLINE	# cancelStat
+	| NEWLINE			# blank;
 
 reserve:
-    'RESERVAR' ID 'PARA' DATE 'DE' TIME 'A' TIME 'EVENTO' STRING
-    | 'RESERVAR' ID 'PARA' DATE 'DE' TIME 'A' TIME 'EVENTO' STRING 'DESCRIPCION' STRING
-; 
+	'RESERVE' NAME 'ROOM' ID 'AT' DATE 'FROM' TIME 'TO' TIME 'EVENT' STRING (
+		'DESCRIPTION' STRING
+	)?;
 
-cancel: 'CANCELAR' INT ;
+cancel: 'CANCEL' INT;
 
-INT: [0-9]+ ;
-ID  : [a-zA-Z0-9]+ ; 
-DATE: DIGIT DIGIT '/' DIGIT DIGIT '/' DIGIT DIGIT DIGIT DIGIT ; 
-TIME: DIGIT DIGIT ':' DIGIT DIGIT ; 
-STRING: ('"' ~'"'* '"'); // basically, anything between double quotes that isn't a double quote
-NEWLINE: '\r'? '\n' ; 
-WS  : [ \t]+ -> skip ;
+NAME: [a-zA-Z]+;
+INT: [0-9]+;
+ID: [a-zA-Z0-9]+;
+DATE: DIGIT DIGIT '/' DIGIT DIGIT '/' DIGIT DIGIT DIGIT DIGIT;
+TIME: DIGIT DIGIT ':' DIGIT DIGIT;
+STRING: '"' (~["\r\n])* '"';
+NEWLINE: '\r'? '\n';
+WS: [ \t]+ -> skip;
 
-fragment DIGIT : [0-9] ;
+fragment DIGIT: [0-9];
+
+// antlr -Dlanguage=Python3 MiniLang.g4 python3 DriverConfroom.py program_test_confroom.txt
