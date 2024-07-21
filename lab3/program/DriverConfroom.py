@@ -23,11 +23,13 @@ class Event:
         date,
         start_time,
         end_time,
+        type='Meeting',
         event_description=None,
     ):
         self.id = id
         self.person_name = person_name
         self.name = event_name
+        self.type = type
         self.description = event_description
         self.room = room
         self.date = date
@@ -36,11 +38,14 @@ class Event:
 
     def __str__(self):
         return (
-            f"Event: {self.name}, ID: {self.id}, Room: {self.room}, Person: {self.person_name}, "
+            f"Event: {self.name}, ID: {self.id}, Type: {self.type} Room: {self.room}, Person: {self.person_name}, "
             f"Description: {self.description}, Date: {self.date}, Start Time: {self.start_time}, End Time: {self.end_time}"
         )
 
-    def overlaps_with(self, other_event):
+    def overlaps_with(self, other_event, rescheduling=False):
+        # If rescheduling, allow the same event to be rescheduled
+        if rescheduling and self.id == other_event.id:
+            return False
         if self.room != other_event.room or self.date != other_event.date:
             return False
 
@@ -94,9 +99,21 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             (
                 reservation.STRING(1).getText().strip('"')
                 if reservation.STRING(1)
+                else 'Metting'
+            ),
+            (
+                reservation.STRING(2).getText().strip('"')
+                if reservation.STRING(2)
                 else None
             ),
         )
+
+        # Check for invalid date
+        new_event_date = datetime.datetime.strptime(new_event.date, "%d/%m/%Y")
+        new_event_date = new_event_date.replace(tzinfo=CENTRAL)
+        if new_event_date < datetime.datetime.now(CENTRAL):
+            print(f"Error: Event '{new_event.name}' has a past date.")
+            return
 
         # Check for invalid start and end times
         if datetime.datetime.strptime(
@@ -165,6 +182,81 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
         for e in self.events:
             print(e.__str__())
         print()
+    
+    def enterListStat(self, ctx: ConfRoomSchedulerParser.ListStatContext):
+        print('\n--- EVENTS ---')
+        for index, e in enumerate(self.events):
+            print(f'{index+1}) {e.__str__()}')
+        print()
+
+    def enterRescheduleStat(self, ctx: ConfRoomSchedulerParser.RescheduleStatContext):
+        reschedule = ctx.reschedule()
+
+        eventId = int(reschedule.INT().getText())
+        new_date = reschedule.DATE().getText()
+        new_start_time = reschedule.TIME(0).getText()
+        new_end_time = reschedule.TIME(1).getText()
+
+        event = None
+        for e in self.events:
+            if e.id == eventId:
+                event = e
+                break
+
+        if event is None:
+            print(f"Event does not exist.")
+            return
+
+        # Check for invalid date
+        new_event_date = datetime.datetime.strptime(new_date, "%d/%m/%Y")
+        new_event_date = new_event_date.replace(tzinfo=CENTRAL)
+        if new_event_date < datetime.datetime.now(CENTRAL):
+            print(f"Error: Event '{event.name}' has a past date.")
+            return
+
+        # Check for invalid start and end times
+        if datetime.datetime.strptime(
+            new_start_time, "%H:%M"
+        ) >= datetime.datetime.strptime(new_end_time, "%H:%M"):
+            print(
+                f"Error: Event '{event.name}' has an end time that is earlier than its start time."
+            )
+            return
+
+        # Maximum event duration is 4 hours
+        if (
+            datetime.datetime.strptime(new_end_time, "%H:%M")
+            - datetime.datetime.strptime(new_start_time, "%H:%M")
+        ).seconds > 4 * 60 * 60:
+            print(
+                f"Error: Event '{event.name}' exceeds the maximum duration of 4 hours."
+            )
+            return
+
+        # Check for overlapping events
+        for e in self.events:
+            if e.overlaps_with(event, True):
+                print(
+                    f"Error: Event '{event.name}' overlaps with existing event '{e.name}' in room '{event.room}' on '{event.date}'."
+                )
+                return
+
+        event.date = new_date
+        event.start_time = new_start_time
+        event.end_time = new_end_time
+
+        # Schedule notification
+        notification_time = event.notification_time()
+        adjusted_notification_time = notification_time - datetime.timedelta(days=1)
+        if notification_time < datetime.datetime.now(CENTRAL):
+            notify_event(event)
+        else:
+            schedule_time_str = adjusted_notification_time.strftime(
+                "%Y-%m-%d %H:%M:%S %Z%z"
+            )
+            print(
+                f"Scheduling notification for event '{event.name}' at {schedule_time_str}"
+            )
 
 
 # Run the schedule in a separate thread
@@ -197,9 +289,11 @@ def interactive_shell():
     print("Enter your commands:")
     while True:
         try:
-            input_text = input()
-            if input_text.strip() == "":
+            input_text = input(">> ").strip()
+            if input_text == "":
                 continue
+            elif input_text == "exit":
+                break
             process_input(input_text)
         except EOFError:
             break
