@@ -52,6 +52,30 @@ public class ConfRoomSchedulerBaseListener implements ConfRoomSchedulerListener 
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterListStat(ConfRoomSchedulerParser.ListStatContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitListStat(ConfRoomSchedulerParser.ListStatContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRescheduleStat(ConfRoomSchedulerParser.RescheduleStatContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRescheduleStat(ConfRoomSchedulerParser.RescheduleStatContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterBlank(ConfRoomSchedulerParser.BlankContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -83,6 +107,30 @@ public class ConfRoomSchedulerBaseListener implements ConfRoomSchedulerListener 
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitCancel(ConfRoomSchedulerParser.CancelContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterList(ConfRoomSchedulerParser.ListContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitList(ConfRoomSchedulerParser.ListContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterReschedule(ConfRoomSchedulerParser.RescheduleContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitReschedule(ConfRoomSchedulerParser.RescheduleContext ctx) { }
 
 	/**
 	 * {@inheritDoc}

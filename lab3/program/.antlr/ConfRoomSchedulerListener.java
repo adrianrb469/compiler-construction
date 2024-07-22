@@ -41,6 +41,30 @@ public interface ConfRoomSchedulerListener extends ParseTreeListener {
 	 */
 	void exitCancelStat(ConfRoomSchedulerParser.CancelStatContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code listStat}
+	 * labeled alternative in {@link ConfRoomSchedulerParser#stat}.
+	 * @param ctx the parse tree
+	 */
+	void enterListStat(ConfRoomSchedulerParser.ListStatContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code listStat}
+	 * labeled alternative in {@link ConfRoomSchedulerParser#stat}.
+	 * @param ctx the parse tree
+	 */
+	void exitListStat(ConfRoomSchedulerParser.ListStatContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code rescheduleStat}
+	 * labeled alternative in {@link ConfRoomSchedulerParser#stat}.
+	 * @param ctx the parse tree
+	 */
+	void enterRescheduleStat(ConfRoomSchedulerParser.RescheduleStatContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code rescheduleStat}
+	 * labeled alternative in {@link ConfRoomSchedulerParser#stat}.
+	 * @param ctx the parse tree
+	 */
+	void exitRescheduleStat(ConfRoomSchedulerParser.RescheduleStatContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code blank}
 	 * labeled alternative in {@link ConfRoomSchedulerParser#stat}.
 	 * @param ctx the parse tree
@@ -72,4 +96,24 @@ public interface ConfRoomSchedulerListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCancel(ConfRoomSchedulerParser.CancelContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link ConfRoomSchedulerParser#list}.
+	 * @param ctx the parse tree
+	 */
+	void enterList(ConfRoomSchedulerParser.ListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link ConfRoomSchedulerParser#list}.
+	 * @param ctx the parse tree
+	 */
+	void exitList(ConfRoomSchedulerParser.ListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link ConfRoomSchedulerParser#reschedule}.
+	 * @param ctx the parse tree
+	 */
+	void enterReschedule(ConfRoomSchedulerParser.RescheduleContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link ConfRoomSchedulerParser#reschedule}.
+	 * @param ctx the parse tree
+	 */
+	void exitReschedule(ConfRoomSchedulerParser.RescheduleContext ctx);
 }

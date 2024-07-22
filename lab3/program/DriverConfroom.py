@@ -23,7 +23,7 @@ class Event:
         date,
         start_time,
         end_time,
-        type='Meeting',
+        type="Meeting",
         event_description=None,
     ):
         self.id = id
@@ -99,7 +99,7 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             (
                 reservation.STRING(1).getText().strip('"')
                 if reservation.STRING(1)
-                else 'Metting'
+                else "Metting"
             ),
             (
                 reservation.STRING(2).getText().strip('"')
@@ -182,11 +182,11 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
         for e in self.events:
             print(e.__str__())
         print()
-    
+
     def enterListStat(self, ctx: ConfRoomSchedulerParser.ListStatContext):
-        print('\n--- EVENTS ---')
+        print("\n--- EVENTS ---")
         for index, e in enumerate(self.events):
-            print(f'{index+1}) {e.__str__()}')
+            print(f"{index+1}) {e.__str__()}")
         print()
 
     def enterRescheduleStat(self, ctx: ConfRoomSchedulerParser.RescheduleStatContext):
@@ -204,7 +204,7 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
                 break
 
         if event is None:
-            print(f"Event does not exist.")
+            print(f"Error: Event with ID '{eventId}' does not exist.")
             return
 
         # Check for invalid date
@@ -233,14 +233,28 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
             )
             return
 
+        # Create a temporary event for overlap checking
+        temp_event = Event(
+            id=eventId,
+            person_name=event.person_name,
+            event_name=event.name,
+            room=event.room,
+            date=new_date,
+            start_time=new_start_time,
+            end_time=new_end_time,
+            type=event.type,
+            event_description=event.description,
+        )
+
         # Check for overlapping events
         for e in self.events:
-            if e.overlaps_with(event, True):
+            if e.overlaps_with(temp_event, True):
                 print(
                     f"Error: Event '{event.name}' overlaps with existing event '{e.name}' in room '{event.room}' on '{event.date}'."
                 )
                 return
 
+        # Update event details
         event.date = new_date
         event.start_time = new_start_time
         event.end_time = new_end_time
@@ -263,7 +277,7 @@ class ConfRoomSchedulerCustomListener(ConfRoomSchedulerListener):
 def run_schedule():
     while True:
         schedule.run_pending()
-        print("next notification at:", schedule.next_run())
+        # print("next notification at:", schedule.next_run())
         time.sleep(5)
 
 
