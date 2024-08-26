@@ -1,4 +1,4 @@
-// Generated from /Users/adrian/Documents/University/2024/s2/compilers/compiler-construction/lab3/program/ConfRoomScheduler.g4 by ANTLR 4.13.1
+// Generated from /Users/adrian/compiler-construction/lab3/program/ConfRoomScheduler.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
