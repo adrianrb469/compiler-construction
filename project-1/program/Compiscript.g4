@@ -1,11 +1,14 @@
 grammar Compiscript;
 
 program: declaration* EOF;
+
 declaration: classDecl | funDecl | varDecl | statement;
+
 classDecl:
 	'class' IDENTIFIER ('extends' IDENTIFIER)? '{' function* '}';
 funDecl: 'fun' function;
 varDecl: 'var' IDENTIFIER ('=' expression)? ';';
+
 statement:
 	exprStmt
 	| forStmt
@@ -14,6 +17,7 @@ statement:
 	| returnStmt
 	| whileStmt
 	| block;
+
 exprStmt: expression ';';
 forStmt:
 	'for' '(' (varDecl | exprStmt | ';') expression? ';' expression? ')' statement;
@@ -23,17 +27,22 @@ returnStmt: 'return' expression? ';';
 whileStmt: 'while' '(' expression ')' statement;
 block: '{' declaration* '}';
 funAnon: 'fun' '(' parameters? ')' block;
+
 expression: assignment | funAnon;
+
 assignment: (call '.')? IDENTIFIER '=' assignment | logicOr;
+
 logicOr: logicAnd ('or' logicAnd)*;
 logicAnd: equality ('and' equality)*;
-equality: comparison (('!=' | '==') comparison)*;
-comparison: term (('>' | '>=' | '<' | '<=') term)*;
-term: factor (('-' | '+') factor)*;
-factor: unary (('/' | '*' | '%') unary)*;
+equality: comparison (( '!=' | '==') comparison)*;
+comparison: term (( '>' | '>=' | '<' | '<=') term)*;
+term: factor (( '-' | '+') factor)*;
+factor: unary (( '/' | '*' | '%') unary)*;
 array: '[' (expression (',' expression)*)? ']';
 instantiation: 'new' IDENTIFIER '(' arguments? ')';
-unary: ('!' | '-') unary | call;
+
+unary: ( '!' | '-') unary | call;
+
 call:
 	primary (
 		'(' arguments? ')'
@@ -41,6 +50,7 @@ call:
 		| '[' expression ']'
 	)*
 	| funAnon;
+
 primary:
 	'true'
 	| 'false'
@@ -53,14 +63,15 @@ primary:
 	| 'super' '.' IDENTIFIER
 	| array
 	| instantiation;
-function: IDENTIFIER '(' parameters? ')' block;
-parameters: IDENTIFIER (',' IDENTIFIER)*;
-arguments: expression (',' expression)*;
 
-NUMBER: DIGIT+ ('.' DIGIT+)?;
+function: IDENTIFIER '(' parameters? ')' block;
+parameters: IDENTIFIER ( ',' IDENTIFIER)*;
+arguments: expression ( ',' expression)*;
+
+NUMBER: DIGIT+ ( '.' DIGIT+)?;
 STRING: '"' (~["\\])* '"';
-IDENTIFIER: ALPHA (ALPHA | DIGIT)*;
+IDENTIFIER: ALPHA ( ALPHA | DIGIT)*;
 fragment ALPHA: [a-zA-Z_];
 fragment DIGIT: [0-9];
 WS: [ \t\r\n]+ -> skip;
-ONE_LINE_COMMENT: '//' (~'\n')* '\n'? -> skip;
+ONE_LINE_COMMENT: '//' (~ '\n')* '\n'? -> skip;

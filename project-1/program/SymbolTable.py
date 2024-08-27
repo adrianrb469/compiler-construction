@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 
 
 class SymbolType(Enum):
@@ -34,7 +34,7 @@ class Symbol:
         self.data_type = data_type
         self.line = line
         self.column = column
-        self.value = None
+        self.value: Any = None
         self.attributes: Dict[str, Any] = {}
 
 
@@ -44,7 +44,7 @@ class ClassSymbol(Symbol):
     ):
         super().__init__(name, SymbolType.CLASS, DataType.OBJECT, line, column)
         self.superclass = superclass
-        self.methods: Dict[str, FunctionSymbol] = {}
+        self.methods: Dict[str, "FunctionSymbol"] = {}
         self.fields: Dict[str, Symbol] = {}
 
 
@@ -71,14 +71,14 @@ class SymbolTable:
     def declare(self, symbol: Symbol):
         self.scopes[self.current_scope][symbol.name] = symbol
 
-    def lookup(self, name: str) -> Optional[Symbol]:
+    def lookup(self, name: str, current_scope: bool = False) -> Optional[Symbol]:
+        if current_scope:
+            return self.scopes[self.current_scope].get(name, None)
+
         for scope in reversed(self.scopes):
             if name in scope:
                 return scope[name]
         return None
-
-    def lookup_in_current_scope(self, name: str) -> Optional[Symbol]:
-        return self.scopes[self.current_scope].get(name)
 
     def update(self, name: str, value: Any) -> bool:
         symbol = self.lookup(name)
@@ -90,23 +90,23 @@ class SymbolTable:
     def get_current_scope(self) -> Dict[str, Symbol]:
         return self.scopes[self.current_scope]
 
-    def declare_variable(self, name: str, data_type: DataType, line: int, column: int):
-        symbol = Symbol(name, SymbolType.VARIABLE, data_type, line, column)
+    def declare_symbol(
+        self,
+        name: str,
+        symbol_type: SymbolType,
+        data_type: DataType,
+        line: int,
+        column: int,
+    ) -> Symbol:
+        symbol: Union[Symbol, ClassSymbol, FunctionSymbol]
+        if symbol_type == SymbolType.CLASS:
+            symbol = ClassSymbol(name, line, column)
+        elif symbol_type == SymbolType.FUNCTION:
+            symbol = FunctionSymbol(name, data_type, line, column)
+        else:
+            symbol = Symbol(name, symbol_type, data_type, line, column)
         self.declare(symbol)
-
-    def declare_function(
-        self, name: str, return_type: DataType, line: int, column: int
-    ) -> FunctionSymbol:
-        function = FunctionSymbol(name, return_type, line, column)
-        self.declare(function)
-        return function
-
-    def declare_class(
-        self, name: str, line: int, column: int, superclass: Optional[str] = None
-    ) -> ClassSymbol:
-        class_symbol = ClassSymbol(name, line, column, superclass)
-        self.declare(class_symbol)
-        return class_symbol
+        return symbol
 
     def add_method_to_class(self, class_name: str, method: FunctionSymbol):
         class_symbol = self.lookup(class_name)
