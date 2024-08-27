@@ -46,5 +46,5 @@ result
 
 # show the errors
 if len(errors) > 0:
-  st.write("Errors:")
+  st.write("Errors")
   errors
