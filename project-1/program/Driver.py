@@ -1,10 +1,10 @@
 import sys
 from typing import List
 from antlr4 import *
-from CompiscriptLexer import CompiscriptLexer
-from CompiscriptParser import CompiscriptParser
-from CompiscriptVisitor import CompiscriptVisitor
-from SymbolTable import DataType, FunctionSymbol, SymbolTable, SymbolType
+from .CompiscriptLexer import CompiscriptLexer
+from .CompiscriptParser import CompiscriptParser
+from .CompiscriptVisitor import CompiscriptVisitor
+from .SymbolTable import DataType, FunctionSymbol, SymbolTable, SymbolType
 
 
 class CompiscriptCompiler(CompiscriptVisitor):
@@ -177,7 +177,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
-        console.log("Instantiation of class" + ctx.IDENTIFIER().getText())
+        print("Instantiation of class" + ctx.IDENTIFIER().getText())
         # if the class is not defined, report an error
         class_name = ctx.IDENTIFIER().getText()
         if not self.symbol_table.lookup(class_name):
@@ -242,6 +242,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitArguments(self, ctx: CompiscriptParser.ArgumentsContext):
         return self.visitChildren(ctx)
+    
+    def getErrors(self):
+        return self.errors
 
 
 def main(argv):
@@ -268,3 +271,21 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
+
+def compiler(code):
+    try:
+        input_stream = InputStream(code)
+        lexer = CompiscriptLexer(input_stream)
+        token_stream = CommonTokenStream(lexer)
+        parser = CompiscriptParser(token_stream)
+        tree = parser.program()
+        tree_str = tree.toStringTree(recog=parser)
+
+        visitor = CompiscriptCompiler()
+        errors = visitor.getErrors()
+        visitor.visit(tree)
+
+        return tree_str, errors
+    except Exception as e:
+        print("Error compiling code", e)
+        return e
