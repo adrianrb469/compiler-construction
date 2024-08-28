@@ -9,7 +9,7 @@ from .SymbolTable import DataType, FunctionSymbol, SymbolTable, SymbolType
 
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self) -> None:
-        self.symbol_table = SymbolTable()
+        self.symbol_table = SymbolTable("global")
         self.current_class = None
         self.errors: List[str] = []
 
@@ -242,7 +242,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitArguments(self, ctx: CompiscriptParser.ArgumentsContext):
         return self.visitChildren(ctx)
-    
+
     def getErrors(self):
         return self.errors
 
@@ -272,6 +272,7 @@ def main(argv):
 if __name__ == "__main__":
     main(sys.argv)
 
+
 def compiler(code):
     try:
         input_stream = InputStream(code)
@@ -282,10 +283,10 @@ def compiler(code):
         tree_str = tree.toStringTree(recog=parser)
 
         visitor = CompiscriptCompiler()
-        errors = visitor.getErrors()
         visitor.visit(tree)
+        errors = visitor.getErrors()
 
         return tree_str, errors
     except Exception as e:
         print("Error compiling code", e)
-        return e
+        return None, [str(e)]
