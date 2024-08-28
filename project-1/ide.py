@@ -1,50 +1,50 @@
 import streamlit as st
 from streamlit_ace import st_ace
-
 from program.Driver import compiler
 
-# Custom CSS to make the app full-width
-st.markdown("""
-<style>
-.stApp {
-    max-width: 100%;
-    padding-top: 2rem;
-}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(layout="wide")
+
 
 # Your Streamlit app code
-# st.title("Compiler IDE")
+st.title("Compiscript")
 
-# Spawn a new Ace editor
-code = st_ace(
-  placeholder='',
-  theme='twilight',
-  language='python',
-  keybinding='vscode',
-  height=300,
-  min_lines=30,
-  max_lines=None,
-  font_size=14,
-  tab_size=4,
-  wrap=False
-)
+# Create two columns with equal width
+col1, col2 = st.columns(2)
 
-# Display editor's content as you type
+with col1:
+    # Spawn a new Ace editor
+    code = st_ace(
+        placeholder="",
+        theme="twilight",
+        language="python",
+        keybinding="vscode",
+        height=800,
+        min_lines=35,
+        max_lines=None,
+        font_size=14,
+        tab_size=4,
+        wrap=False,
+    )
 
-def compile(code):
-  try:
-    result = compiler(code)
-    return result
-  except Exception as e:
-    print("Error compiling code", e)
+with col2:
+    result, errors = compiler(code)
 
-result, errors = compile(code)
+    if result:
+        st.subheader("Parse Tree")
+        with st.container(height=200, border=False):
 
-# show the output of the compiler
-result
+            st.code(result, language="text", wrap_lines=True)
+    else:
+        st.markdown(
+            '<div class="output-content">No output</div>', unsafe_allow_html=True
+        )
 
-# show the errors
-if len(errors) > 0:
-  st.write("Errors")
-  errors
+    if errors:
+
+        st.subheader("Errors")
+        with st.container(height=500, border=False):
+
+            for error in errors:
+                st.error(error)
+
+    st.markdown("</div>", unsafe_allow_html=True)
