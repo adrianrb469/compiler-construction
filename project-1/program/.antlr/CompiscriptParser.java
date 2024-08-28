@@ -125,14 +125,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_program; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterProgram(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitProgram(this);
-		}
 	}
 
 	public final ProgramContext program() throws RecognitionException {
@@ -189,14 +181,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_declaration; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterDeclaration(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitDeclaration(this);
-		}
 	}
 
 	public final DeclarationContext declaration() throws RecognitionException {
@@ -263,14 +247,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_classDecl; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterClassDecl(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitClassDecl(this);
-		}
 	}
 
 	public final ClassDeclContext classDecl() throws RecognitionException {
@@ -336,14 +312,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_funDecl; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterFunDecl(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitFunDecl(this);
-		}
 	}
 
 	public final FunDeclContext funDecl() throws RecognitionException {
@@ -379,14 +347,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_varDecl; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterVarDecl(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitVarDecl(this);
-		}
 	}
 
 	public final VarDeclContext varDecl() throws RecognitionException {
@@ -454,14 +414,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_statement; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterStatement(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitStatement(this);
-		}
 	}
 
 	public final StatementContext statement() throws RecognitionException {
@@ -557,14 +509,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_exprStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterExprStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitExprStmt(this);
-		}
 	}
 
 	public final ExprStmtContext exprStmt() throws RecognitionException {
@@ -611,14 +555,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_forStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterForStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitForStmt(this);
-		}
 	}
 
 	public final ForStmtContext forStmt() throws RecognitionException {
@@ -723,14 +659,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_ifStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterIfStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitIfStmt(this);
-		}
 	}
 
 	public final IfStmtContext ifStmt() throws RecognitionException {
@@ -783,14 +711,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_printStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterPrintStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitPrintStmt(this);
-		}
 	}
 
 	public final PrintStmtContext printStmt() throws RecognitionException {
@@ -827,14 +747,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_returnStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterReturnStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitReturnStmt(this);
-		}
 	}
 
 	public final ReturnStmtContext returnStmt() throws RecognitionException {
@@ -883,14 +795,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_whileStmt; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterWhileStmt(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitWhileStmt(this);
-		}
 	}
 
 	public final WhileStmtContext whileStmt() throws RecognitionException {
@@ -934,14 +838,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_block; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterBlock(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitBlock(this);
-		}
 	}
 
 	public final BlockContext block() throws RecognitionException {
@@ -994,14 +890,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_funAnon; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterFunAnon(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitFunAnon(this);
-		}
 	}
 
 	public final FunAnonContext funAnon() throws RecognitionException {
@@ -1054,14 +942,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_expression; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterExpression(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitExpression(this);
-		}
 	}
 
 	public final ExpressionContext expression() throws RecognitionException {
@@ -1114,14 +994,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_assignment; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterAssignment(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitAssignment(this);
-		}
 	}
 
 	public final AssignmentContext assignment() throws RecognitionException {
@@ -1186,14 +1058,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_logicOr; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterLogicOr(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitLogicOr(this);
-		}
 	}
 
 	public final LogicOrContext logicOr() throws RecognitionException {
@@ -1246,14 +1110,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_logicAnd; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterLogicAnd(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitLogicAnd(this);
-		}
 	}
 
 	public final LogicAndContext logicAnd() throws RecognitionException {
@@ -1306,14 +1162,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_equality; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterEquality(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitEquality(this);
-		}
 	}
 
 	public final EqualityContext equality() throws RecognitionException {
@@ -1374,14 +1222,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_comparison; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterComparison(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitComparison(this);
-		}
 	}
 
 	public final ComparisonContext comparison() throws RecognitionException {
@@ -1442,14 +1282,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_term; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterTerm(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitTerm(this);
-		}
 	}
 
 	public final TermContext term() throws RecognitionException {
@@ -1510,14 +1342,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_factor; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterFactor(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitFactor(this);
-		}
 	}
 
 	public final FactorContext factor() throws RecognitionException {
@@ -1578,14 +1402,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_array; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterArray(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitArray(this);
-		}
 	}
 
 	public final ArrayContext array() throws RecognitionException {
@@ -1648,14 +1464,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_instantiation; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterInstantiation(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitInstantiation(this);
-		}
 	}
 
 	public final InstantiationContext instantiation() throws RecognitionException {
@@ -1708,14 +1516,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_unary; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterUnary(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitUnary(this);
-		}
 	}
 
 	public final UnaryContext unary() throws RecognitionException {
@@ -1805,14 +1605,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_call; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterCall(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitCall(this);
-		}
 	}
 
 	public final CallContext call() throws RecognitionException {
@@ -1935,14 +1727,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_primary; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterPrimary(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitPrimary(this);
-		}
 	}
 
 	public final PrimaryContext primary() throws RecognitionException {
@@ -2065,14 +1849,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_function; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterFunction(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitFunction(this);
-		}
 	}
 
 	public final FunctionContext function() throws RecognitionException {
@@ -2123,14 +1899,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_parameters; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterParameters(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitParameters(this);
-		}
 	}
 
 	public final ParametersContext parameters() throws RecognitionException {
@@ -2183,14 +1951,6 @@ public class CompiscriptParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_arguments; }
-		@Override
-		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).enterArguments(this);
-		}
-		@Override
-		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof CompiscriptListener ) ((CompiscriptListener)listener).exitArguments(this);
-		}
 	}
 
 	public final ArgumentsContext arguments() throws RecognitionException {

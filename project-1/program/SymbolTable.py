@@ -54,40 +54,43 @@ class FunctionSymbol(Symbol):
 
 
 class SymbolTable:
-    def __init__(self):
-        self.scopes: List[Dict[str, Symbol]] = [{}]
-        self.current_scope = 0
+    def __init__(self, name: str, parent: Optional["SymbolTable"] = None):
+        self.name = name
+        self.parent = parent
+        self.children: List["SymbolTable"] = []
+        self.symbols: Dict[str, Symbol] = {}
+        self.current_scope: Optional["SymbolTable"] = None
 
-    def enter_scope(self):
-        self.scopes.append({})
-        self.current_scope += 1
+    def enter_scope(self, name: str) -> "SymbolTable":
+        new_scope = SymbolTable(name=name, parent=self)
+        self.children.append(new_scope)
+        self.current_scope = new_scope
+        return new_scope
 
-    def exit_scope(self):
-        if self.current_scope > 0:
-            self.scopes.pop()
-            self.current_scope -= 1
+    def exit_scope(self) -> Optional["SymbolTable"]:
+        if self.parent:
+            self.parent.current_scope = None
+            return self.parent
+        return None
 
     def declare(self, symbol: Symbol):
-        self.scopes[self.current_scope][symbol.name] = symbol
+        self.symbols[symbol.name] = symbol
 
-    def lookup(self, name: str, current_scope: bool = False) -> Optional[Symbol]:
-        if current_scope:
-            return self.scopes[self.current_scope].get(name, None)
-
-        for scope in reversed(self.scopes):
-            if name in scope:
-                return scope[name]
+    def lookup(self, name: str, current_scope_only: bool = False) -> Optional[Symbol]:
+        if name in self.symbols:
+            return self.symbols[name]
+        if not current_scope_only and self.parent:
+            return self.parent.lookup(name)
         return None
 
     def update(self, name: str, value: Any) -> bool:
-        symbol = self.lookup(name)
+        symbol = self.lookup(name, current_scope_only=True)
         if symbol:
             symbol.value = value
             return True
+        if self.parent:
+            return self.parent.update(name, value)
         return False
-
-    def get_current_scope(self) -> Dict[str, Symbol]:
-        return self.scopes[self.current_scope]
 
     def declare_symbol(
         self,
@@ -116,3 +119,20 @@ class SymbolTable:
         class_symbol = self.lookup(class_name)
         if isinstance(class_symbol, ClassSymbol):
             class_symbol.fields[field.name] = field
+
+    def get_current_scope(self) -> "SymbolTable":
+        return self.current_scope if self.current_scope else self
+
+    def get_scope_name(self) -> str:
+        return self.name
+
+    def get_full_scope_name(self) -> str:
+        if self.parent:
+            return f"{self.parent.get_full_scope_name()}.{self.name}"
+        return self.name
+
+    def __str__(self) -> str:
+        return f"SymbolTable(name='{self.name}', symbols={list(self.symbols.keys())})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
