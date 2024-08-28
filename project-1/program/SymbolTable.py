@@ -6,7 +6,6 @@ class SymbolType(Enum):
     CLASS = auto()
     FUNCTION = auto()
     VARIABLE = auto()
-    PARAMETER = auto()
 
 
 class DataType(Enum):
