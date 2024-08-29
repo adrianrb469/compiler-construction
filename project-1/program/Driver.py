@@ -39,7 +39,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         var_name = ctx.IDENTIFIER().getText()
 
-        if self.symbol_table.lookup(var_name, current_scope=True):
+        if self.symbol_table.lookup(var_name, current_scope_only=True):
             self.report_error(f"Variable '{var_name}' already defined", ctx)
             return None
 
@@ -68,7 +68,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
 
-        if self.symbol_table.lookup(fun_name, current_scope=True):
+        if self.symbol_table.lookup(fun_name, current_scope_only=True):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
             return None
 
