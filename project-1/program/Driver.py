@@ -27,7 +27,14 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitDeclaration(self, ctx: CompiscriptParser.DeclarationContext):
-        return self.visitChildren(ctx)
+        if ctx.classDecl() is not None:
+            return self.visitClassDecl(ctx.classDecl())
+        elif ctx.funDecl() is not None:
+            return self.visitFunDecl(ctx.funDecl())
+        elif ctx.varDecl() is not None:
+            return self.visitVarDecl(ctx.varDecl())
+        else: # return the statement at self as the last option
+            return self.visitStatement(ctx.statement())
 
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
         return self.visitChildren(ctx)
