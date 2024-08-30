@@ -5,7 +5,7 @@ program: declaration* EOF;
 declaration: classDecl | funDecl | varDecl | statement;
 
 classDecl:
-	'class' IDENTIFIER ('extends' IDENTIFIER)? '{' function* '}';
+	'class' IDENTIFIER ('extends' IDENTIFIER)? '{' methods '}';
 funDecl: 'fun' function;
 varDecl: 'var' IDENTIFIER ('=' expression)? ';';
 
@@ -27,6 +27,7 @@ returnStmt: 'return' expression? ';';
 whileStmt: 'while' '(' expression ')' statement;
 block: '{' declaration* '}';
 funAnon: 'fun' '(' parameters? ')' block;
+init: 'init' '(' parameters? ')' block;
 
 expression: assignment | funAnon;
 
@@ -64,6 +65,7 @@ primary:
 	| array
 	| instantiation;
 
+methods: (function | init)*;
 function: IDENTIFIER '(' parameters? ')' block;
 parameters: IDENTIFIER ( ',' IDENTIFIER)*;
 arguments: expression ( ',' expression)*;

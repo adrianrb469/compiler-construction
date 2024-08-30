@@ -1,17 +1,18 @@
 import sys
+
 sys.path.append("..")
 from typing import List
 from antlr4 import *
 from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
 from .CompiscriptVisitor import CompiscriptVisitor
-from .SymbolTable import DataType, FunctionSymbol, SymbolTable, SymbolType
+from .SymbolTable import ClassSymbol, DataType, FunctionSymbol, SymbolTable, SymbolType
 from utils.utils import getDeclType
+
 
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self) -> None:
-        self.symbol_table = SymbolTable("global")
-        self.current_scope = None
+        self.symbol_table = SymbolTable()
         self.current_class = None
         self.current_function = None
         self.errors: List[str] = []
@@ -36,30 +37,31 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visitFunDecl(ctx.funDecl())
         elif ctx.varDecl() is not None:
             return self.visitVarDecl(ctx.varDecl())
-        else: # return the statement at self as the last option
+        else:  # return the statement at self as the last option
             return self.visitStatement(ctx.statement())
 
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
-    # Get the class name
+        # Get the class name
         class_name = ctx.IDENTIFIER(0).getText()
-
         if self.symbol_table.lookup(class_name, current_scope_only=True):
-            exp_type = str(self.symbol_table.lookup(class_name, current_scope_only=True).data_type).replace("DataType.", "")
-            self.report_error(f"Variable '{class_name}' already defined as {getDeclType(exp_type)}", ctx)
+            exp_type = str(
+                self.symbol_table.lookup(class_name, current_scope_only=True).data_type
+            ).replace("DataType.", "")
+            self.report_error(
+                f"Variable '{class_name}' already defined as {getDeclType(exp_type)}",
+                ctx,
+            )
             return None
 
         # Manage inheritance
         extensions = ctx.IDENTIFIER()
         parent_classes = []
-
-        for extension in range(1, len(extensions)):
-            parent_class_name = extensions[extension].getText()
+        if len(extensions) > 1:
+            parent_class_name = extensions[1].getText()
             parent_class = self.symbol_table.lookup(parent_class_name)
-            
             if not parent_class:
                 self.report_error(f"Class '{parent_class_name}' not defined", ctx)
                 return None
-
             parent_classes.append(parent_class)
 
         # Create the new class symbol
@@ -70,16 +72,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
             ctx.start.line,
             ctx.start.column,
         )
+        assert isinstance(new_class, ClassSymbol)
 
         # Enter the class scope
-        self.symbol_table = self.symbol_table.enter_scope(class_name)
+        self.symbol_table.enter_scope(class_name)
         self.current_class = new_class
 
-        # Inherit methods from parent classes
+        # Inherit methods from parent class
         for parent_class in parent_classes:
             print(f"parent class methods: {parent_class.methods}")
             for method_name, method in parent_class.methods.items():
-                print(f"Inheriting method in {class_name} from {parent_class.name}:", method_name)
+                print(
+                    f"Inheriting method in {class_name} from {parent_class.name}:",
+                    method_name,
+                )
                 if method_name not in new_class.methods:
                     new_class.methods[method_name] = method
                     # Also add the inherited method to the current scope
@@ -91,13 +97,22 @@ class CompiscriptCompiler(CompiscriptVisitor):
                         ctx.start.column,
                     )
 
-        # Visit and add the class's own methods
-        class_functions = ctx.function()
-        for function in class_functions:
-            self.visit(function)
+        methods = ctx.methods()
+        init_count = 0
+
+        for method in methods.getChildren():
+            if isinstance(method, CompiscriptParser.InitContext):
+                print(f"Found initializer in class {class_name}")
+                init_count += 1
+                if init_count > 1:
+                    self.report_error(
+                        f'Multiple initializers found in class "{class_name}"', ctx
+                    )
+                    return None
+            self.visit(method)
 
         # Exit the class scope
-        self.symbol_table = self.symbol_table.exit_scope()
+        self.symbol_table.exit_scope()
         self.current_class = None
 
         return None
@@ -114,8 +129,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return None
 
         if ctx.expression():
-            # var a = 4+5
-            #  var b = random()
             expr_type = self.visit(ctx.expression())
             self.symbol_table.declare_symbol(
                 var_name,
@@ -125,7 +138,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 ctx.start.column,
             )
         else:
-            # var a;
             self.symbol_table.declare_symbol(
                 var_name,
                 SymbolType.VARIABLE,
@@ -190,7 +202,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
-        # self.symbol_table.enter_scope()
+        self.symbol_table.enter_scope("block")  # does it need a name?
         for declaration in ctx.declaration():
             self.visit(declaration)
         self.symbol_table.exit_scope()
@@ -301,7 +313,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             param_name = param.getText()
             param_symbol = self.symbol_table.declare_symbol(
                 param_name,
-                SymbolType.PARAMETER,
+                SymbolType.VARIABLE,
                 DataType.ANY,
                 param.getPayload().line,
                 param.getPayload().column,

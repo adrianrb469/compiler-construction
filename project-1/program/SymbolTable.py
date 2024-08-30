@@ -53,25 +53,12 @@ class FunctionSymbol(Symbol):
         self.parameters: List[Symbol] = []
 
 
-class SymbolTable:
-    def __init__(self, name: str, parent: Optional["SymbolTable"] = None):
+class Scope:
+    def __init__(self, name: str, parent: Optional["Scope"] = None):
         self.name = name
         self.parent = parent
-        self.children: List["SymbolTable"] = []
+        self.children: List["Scope"] = []
         self.symbols: Dict[str, Symbol] = {}
-        self.current_scope: Optional["SymbolTable"] = None
-
-    def enter_scope(self, name: str) -> "SymbolTable":
-        new_scope = SymbolTable(name=name, parent=self)
-        self.children.append(new_scope)
-        self.current_scope = new_scope
-        return new_scope
-
-    def exit_scope(self) -> Optional["SymbolTable"]:
-        if self.parent:
-            self.parent.current_scope = None
-            return self.parent
-        return None
 
     def declare(self, symbol: Symbol):
         self.symbols[symbol.name] = symbol
@@ -92,6 +79,37 @@ class SymbolTable:
             return self.parent.update(name, value)
         return False
 
+    def get_full_scope_name(self) -> str:
+        if self.parent:
+            return f"{self.parent.get_full_scope_name()}.{self.name}"
+        return self.name
+
+    def __str__(self) -> str:
+        return f"Scope(name='{self.name}', symbols={list(self.symbols.keys())})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+
+class SymbolTable:
+    def __init__(self):
+        self.global_scope = Scope("global")
+        self.current_scope = self.global_scope
+
+    def enter_scope(self, name: str = "") -> Scope:
+        new_scope = Scope(
+            name=name or f"block_{id(new_scope)}", parent=self.current_scope
+        )
+        self.current_scope.children.append(new_scope)
+        self.current_scope = new_scope
+        return new_scope
+
+    def exit_scope(self) -> Optional[Scope]:
+        if self.current_scope.parent:
+            self.current_scope = self.current_scope.parent
+            return self.current_scope
+        return None
+
     def declare_symbol(
         self,
         name: str,
@@ -101,14 +119,23 @@ class SymbolTable:
         column: int,
     ) -> Symbol:
         symbol: Union[Symbol, ClassSymbol, FunctionSymbol]
-        if symbol_type == SymbolType.CLASS:
-            symbol = ClassSymbol(name, line, column)
-        elif symbol_type == SymbolType.FUNCTION:
-            symbol = FunctionSymbol(name, data_type, line, column)
-        else:
-            symbol = Symbol(name, symbol_type, data_type, line, column)
-        self.declare(symbol)
+
+        match symbol_type:
+            case SymbolType.CLASS:
+                symbol = ClassSymbol(name, line, column)
+            case SymbolType.FUNCTION:
+                symbol = FunctionSymbol(name, data_type, line, column)
+            case _:
+                symbol = Symbol(name, symbol_type, data_type, line, column)
+
+        self.current_scope.declare(symbol)
         return symbol
+
+    def lookup(self, name: str, current_scope_only: bool = False) -> Optional[Symbol]:
+        return self.current_scope.lookup(name, current_scope_only)
+
+    def update(self, name: str, value: Any) -> bool:
+        return self.current_scope.update(name, value)
 
     def add_method_to_class(self, class_name: str, method: FunctionSymbol):
         class_symbol = self.lookup(class_name)
@@ -120,19 +147,11 @@ class SymbolTable:
         if isinstance(class_symbol, ClassSymbol):
             class_symbol.fields[field.name] = field
 
-    def get_current_scope(self) -> "SymbolTable":
-        return self.current_scope if self.current_scope else self
+    def get_current_scope(self) -> Scope:
+        return self.current_scope
 
     def get_scope_name(self) -> str:
-        return self.name
+        return self.current_scope.name
 
     def get_full_scope_name(self) -> str:
-        if self.parent:
-            return f"{self.parent.get_full_scope_name()}.{self.name}"
-        return self.name
-
-    def __str__(self) -> str:
-        return f"SymbolTable(name='{self.name}', symbols={list(self.symbols.keys())})"
-
-    def __repr__(self) -> str:
-        return self.__str__()
+        return self.current_scope.get_full_scope_name()
