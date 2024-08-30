@@ -40,15 +40,30 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visitStatement(ctx.statement())
 
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
-        # get the class name
+    # Get the class name
         class_name = ctx.IDENTIFIER(0).getText()
 
         if self.symbol_table.lookup(class_name, current_scope_only=True):
-            exp_type = str(self.symbol_table.lookup(class_name, current_scope_only=True).data_type).replace("DataType.", "") # replace DataType.TYPE and just use the actual type
+            exp_type = str(self.symbol_table.lookup(class_name, current_scope_only=True).data_type).replace("DataType.", "")
             self.report_error(f"Variable '{class_name}' already defined as {getDeclType(exp_type)}", ctx)
             return None
-        
-        self.symbol_table.declare_symbol(
+
+        # Manage inheritance
+        extensions = ctx.IDENTIFIER()
+        parent_classes = []
+
+        for extension in range(1, len(extensions)):
+            parent_class_name = extensions[extension].getText()
+            parent_class = self.symbol_table.lookup(parent_class_name)
+            
+            if not parent_class:
+                self.report_error(f"Class '{parent_class_name}' not defined", ctx)
+                return None
+
+            parent_classes.append(parent_class)
+
+        # Create the new class symbol
+        new_class = self.symbol_table.declare_symbol(
             class_name,
             SymbolType.CLASS,
             DataType.OBJECT,
@@ -56,16 +71,34 @@ class CompiscriptCompiler(CompiscriptVisitor):
             ctx.start.column,
         )
 
-        # enter the class scope
+        # Enter the class scope
         self.symbol_table = self.symbol_table.enter_scope(class_name)
+        self.current_class = new_class
 
+        # Inherit methods from parent classes
+        for parent_class in parent_classes:
+            print(f"parent class methods: {parent_class.methods}")
+            for method_name, method in parent_class.methods.items():
+                print(f"Inheriting method in {class_name} from {parent_class.name}:", method_name)
+                if method_name not in new_class.methods:
+                    new_class.methods[method_name] = method
+                    # Also add the inherited method to the current scope
+                    self.symbol_table.declare_symbol(
+                        method_name,
+                        SymbolType.FUNCTION,
+                        method.data_type,
+                        ctx.start.line,
+                        ctx.start.column,
+                    )
+
+        # Visit and add the class's own methods
         class_functions = ctx.function()
-
         for function in class_functions:
             self.visit(function)
 
-        # exit the class scope
+        # Exit the class scope
         self.symbol_table = self.symbol_table.exit_scope()
+        self.current_class = None
 
         return None
 
