@@ -57,16 +57,15 @@ class CompiscriptCompiler(CompiscriptVisitor):
         )
 
         # enter the class scope
-        self.symbol_table.enter_scope(class_name)
-        self.current_scope = class_name
+        self.symbol_table = self.symbol_table.enter_scope(class_name)
 
         class_functions = ctx.function()
 
         for function in class_functions:
             self.visit(function)
 
-        self.symbol_table.exit_scope()
-        self.current_scope = None
+        # exit the class scope
+        self.symbol_table = self.symbol_table.exit_scope()
 
         return None
 
@@ -105,9 +104,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
-        
-        if self.current_scope != None:
-            self.symbol_table.enter_scope(self.current_scope)
 
         if self.symbol_table.lookup(fun_name, current_scope_only=True):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
