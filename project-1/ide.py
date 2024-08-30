@@ -18,7 +18,7 @@ with col1:
         theme="twilight",
         language="python",
         keybinding="vscode",
-        height=800,
+        height=700,
         min_lines=35,
         max_lines=None,
         font_size=14,
@@ -33,7 +33,7 @@ with col2:
         st.subheader("Parse Tree")
         with st.container(height=200, border=False):
 
-            st.code(result, language="text", wrap_lines=True)
+            st.code(result, language="text")
     else:
         st.markdown(
             '<div class="output-content">No output</div>', unsafe_allow_html=True

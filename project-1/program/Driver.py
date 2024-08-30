@@ -1,16 +1,19 @@
 import sys
+sys.path.append("..")
 from typing import List
 from antlr4 import *
 from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
 from .CompiscriptVisitor import CompiscriptVisitor
 from .SymbolTable import DataType, FunctionSymbol, SymbolTable, SymbolType
-
+from utils.utils import getDeclType
 
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self) -> None:
         self.symbol_table = SymbolTable("global")
+        self.current_scope = None
         self.current_class = None
+        self.current_function = None
         self.errors: List[str] = []
 
     def report_error(self, message: str, ctx):
@@ -37,7 +40,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visitStatement(ctx.statement())
 
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
-        return self.visitChildren(ctx)
+        # get the class name
+        class_name = ctx.IDENTIFIER(0).getText()
+
+        if self.symbol_table.lookup(class_name, current_scope_only=True):
+            exp_type = str(self.symbol_table.lookup(class_name, current_scope_only=True).data_type).replace("DataType.", "") # replace DataType.TYPE and just use the actual type
+            self.report_error(f"Variable '{class_name}' already defined as {getDeclType(exp_type)}", ctx)
+            return None
+        
+        self.symbol_table.declare_symbol(
+            class_name,
+            SymbolType.CLASS,
+            DataType.OBJECT,
+            ctx.start.line,
+            ctx.start.column,
+        )
+
+        # enter the class scope
+        self.symbol_table.enter_scope(class_name)
+        self.current_scope = class_name
+
+        class_functions = ctx.function()
+
+        for function in class_functions:
+            self.visit(function)
+
+        self.symbol_table.exit_scope()
+        self.current_scope = None
+
+        return None
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visitChildren(ctx)
@@ -74,6 +105,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
+        
+        if self.current_scope != None:
+            self.symbol_table.enter_scope(self.current_scope)
 
         if self.symbol_table.lookup(fun_name, current_scope_only=True):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
@@ -90,7 +124,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         assert isinstance(fun_symbol, FunctionSymbol)
 
         self.current_function = fun_symbol
-        self.symbol_table.enter_scope()
+        self.symbol_table.enter_scope(fun_name)
 
         if ctx.parameters():
             self.visit(ctx.parameters())
@@ -127,7 +161,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
-        self.symbol_table.enter_scope()
+        # self.symbol_table.enter_scope()
         for declaration in ctx.declaration():
             self.visit(declaration)
         self.symbol_table.exit_scope()
