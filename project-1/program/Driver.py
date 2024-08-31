@@ -103,6 +103,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         for method in methods.getChildren():
             if isinstance(method, CompiscriptParser.InitContext):
+                # find if there are this.varname in the init
+                # if there are, add them to the class symbol table
+
                 print(f"Found initializer in class {class_name}")
                 self.symbol_table.enter_scope("init")
                 self.visit(method)
@@ -222,17 +225,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
-        # Evaluate the condition
         condition = self.visit(ctx.expression())
 
+        if condition != DataType.BOOLEAN:
+            self.report_error(
+                f"Condition in if statement must evaluate to Boolean, got {condition.name}",
+                ctx,
+            )
+            return None
+
         if condition:
-            # If the condition is true, execute the 'if' block
             return self.visit(ctx.statement(0))
         elif len(ctx.statement()) > 1:
-            # If there's an 'else' block and the condition is false, execute the 'else' block
             return self.visit(ctx.statement(1))
 
-        # If there's no 'else' block and the condition is false, do nothing
         return None
 
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
@@ -372,8 +378,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
         for i in range(1, len(ctx.term())):
             op = ctx.getChild(2 * i - 1).getText()
             right = self.visit(ctx.term(i))
-
-            print("Comparison: ", left, op, right)
 
             if not types_comparable(left, right):
                 self.report_error(
@@ -540,6 +544,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def getErrors(self):
         return self.errors
 
+    def getSymbolTable(self):
+        return self.symbol_table
+
 
 def main(argv):
     if len(argv) != 2:
@@ -580,7 +587,9 @@ def compiler(code):
         visitor.visit(tree)
         errors = visitor.getErrors()
 
-        return tree_str, errors
+        table = visitor.getSymbolTable().to_dict()
+
+        return tree_str, errors, table
     except Exception as e:
         print("Error compiling code", e)
         return None, [str(e)]

@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import json
 from typing import Dict, Any, Optional, List, Union
 
 
@@ -37,6 +38,17 @@ class Symbol:
         self.value: Any = None
         self.attributes: Dict[str, Any] = {}
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "symbol_type": self.symbol_type.name,
+            "data_type": self.data_type.name,
+            "line": self.line,
+            "column": self.column,
+            "value": str(self.value) if self.value is not None else None,
+            "attributes": self.attributes,
+        }
+
 
 class ClassSymbol(Symbol):
     def __init__(
@@ -47,11 +59,33 @@ class ClassSymbol(Symbol):
         self.methods: Dict[str, "FunctionSymbol"] = {}
         self.fields: Dict[str, Symbol] = {}
 
+    def to_dict(self) -> Dict[str, Any]:
+        class_dict = super().to_dict()
+        class_dict.update(
+            {
+                "superclass": self.superclass,
+                "methods": {
+                    name: method.to_dict() for name, method in self.methods.items()
+                },
+                "fields": {
+                    name: field.to_dict() for name, field in self.fields.items()
+                },
+            }
+        )
+        return class_dict
+
 
 class FunctionSymbol(Symbol):
     def __init__(self, name: str, return_type: DataType, line: int, column: int):
         super().__init__(name, SymbolType.FUNCTION, return_type, line, column)
         self.parameters: List[Symbol] = []
+
+    def to_dict(self) -> Dict[str, Any]:
+        function_dict = super().to_dict()
+        function_dict.update(
+            {"parameters": [param.to_dict() for param in self.parameters]}
+        )
+        return function_dict
 
 
 class Scope:
@@ -90,6 +124,15 @@ class Scope:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "symbols": {
+                name: symbol.to_dict() for name, symbol in self.symbols.items()
+            },
+            "children": [child.to_dict() for child in self.children],
+        }
 
 
 class SymbolTable:
@@ -156,3 +199,15 @@ class SymbolTable:
 
     def get_full_scope_name(self) -> str:
         return self.current_scope.get_full_scope_name()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "global_scope": self.global_scope.to_dict(),
+            "current_scope": self.current_scope.get_full_scope_name(),
+        }
+
+    def print_table(self):
+        print(json.dumps(self.to_dict(), indent=2))
+
+    def get_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)

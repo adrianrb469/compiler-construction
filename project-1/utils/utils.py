@@ -23,6 +23,7 @@ def types_comparable(typeA: DataType, typeB: DataType) -> bool:
     ):
         return True
     if DataType.ANY in [typeA, typeB]:
+        # ? Should this be false?
         return True
     if typeA == DataType.NULL or typeB == DataType.NULL:
         return True

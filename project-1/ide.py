@@ -27,7 +27,7 @@ with col1:
     )
 
 with col2:
-    result, errors = compiler(code)
+    result, errors, table = compiler(code)
 
     if result:
         st.subheader("Parse Tree")
@@ -48,3 +48,20 @@ with col2:
                 st.error(error)
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+
+def display_scope(scope_dict):
+    st.write(f"Scope: {scope_dict['name']}")
+    for symbol_name, symbol_info in scope_dict["symbols"].items():
+        st.write(f"  Symbol: {symbol_name}")
+        st.write(f"    Type: {symbol_info['symbol_type']}")
+        st.write(f"    Data Type: {symbol_info['data_type']}")
+        # Add more details as needed
+
+    for child_scope in scope_dict["children"]:
+        st.write("Child Scope:")
+        display_scope(child_scope)
+
+
+st.title("Symbol Table Visualization")
+st.json(table)
