@@ -118,7 +118,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
-        return self.visitChildren(ctx)
+        return self.visit(ctx.function())
 
     def visitVarDecl(self, ctx: CompiscriptParser.VarDeclContext):
 
