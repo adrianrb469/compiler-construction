@@ -87,6 +87,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     method_name,
                 )
                 if method_name not in new_class.methods:
+                    # add the inherited method to the new class methods dictionary
                     new_class.methods[method_name] = method
                     # Also add the inherited method to the current scope
                     self.symbol_table.declare_symbol(
@@ -103,6 +104,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         for method in methods.getChildren():
             if isinstance(method, CompiscriptParser.InitContext):
                 print(f"Found initializer in class {class_name}")
+                self.symbol_table.enter_scope("init")
+                self.visit(method)
+                self.symbol_table.exit_scope()
                 init_count += 1
                 if init_count > 1:
                     self.report_error(
@@ -111,11 +115,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     return None
             self.visit(method)
 
+        print(f"this statements: {vars(new_class.attributes)}")
+
         # Exit the class scope
         self.symbol_table.exit_scope()
         self.current_class = None
 
         return None
+    
+    def visitInit(self, ctx: CompiscriptParser.InitContext):
+        # verify that the initializer is in a class context
+        if not self.current_class:
+            self.report_error("Initializer outside of class context", ctx)
+            return None
+
+        # Get the initializer name as this.attribute = value
+        parameters = ctx.parameters()
+
+        # save parameters as a normal function
+        for param in parameters.IDENTIFIER():
+            param_name = param.getText()
+            self.symbol_table.declare_symbol(
+                param_name,
+                SymbolType.VARIABLE,
+                DataType.ANY,
+                param.getPayload().line,
+                param.getPayload().column,
+            )
+
+        self.visit(ctx.block())
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visit(ctx.function())
@@ -235,6 +263,33 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
         if ctx.IDENTIFIER():
+
+            # handle class attributes assignment: this.attribute = value
+            if ctx.call().primary().getText() == "this":
+                if not self.current_class:
+                    self.report_error("'this' used outside of class context", ctx)
+                    return DataType.ANY
+                
+                # get the attribute name
+                attr_name = ctx.IDENTIFIER().getText()
+                # get the attribute type
+                
+                # get the attribute type
+                if ctx.assignment():
+                    expr_type = self.visit(ctx.assignment())
+                
+                # check if the attribute is defined in the class
+                if attr_name not in self.current_class.attributes:
+                    self.report_error(f"Attribute '{attr_name}' not defined in class '{self.current_class.name}'", ctx)
+                    return DataType.ANY
+                
+                # assign the attribute to the current class
+                # current scope route is: global -> class -> init -> block
+                # so we need to update the attribute in the class scope
+                self.symbol_table.current_scope.parent.parent.symbols[attr_name].data_type = expr_type
+                return expr_type
+
+
             var_name = ctx.IDENTIFIER().getText()
             symbol = self.symbol_table.lookup(var_name)
             if not symbol:
