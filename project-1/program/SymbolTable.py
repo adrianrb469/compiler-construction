@@ -17,6 +17,7 @@ class DataType(Enum):
     OBJECT = auto()
     ANY = auto()
     VOID = auto()
+    NULL = auto()
 
 
 class Symbol:

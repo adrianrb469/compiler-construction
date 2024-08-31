@@ -7,7 +7,7 @@ from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
 from .CompiscriptVisitor import CompiscriptVisitor
 from .SymbolTable import ClassSymbol, DataType, FunctionSymbol, SymbolTable, SymbolType
-from utils.utils import getDeclType
+from utils.utils import getDeclType, types_comparable, arithmetic_op
 
 
 class CompiscriptCompiler(CompiscriptVisitor):
@@ -129,6 +129,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return None
 
         if ctx.expression():
+            print(
+                f"Declaring variable {var_name} with type {self.visit(ctx.expression())}"
+            )
+
             expr_type = self.visit(ctx.expression())
             self.symbol_table.declare_symbol(
                 var_name,
@@ -190,7 +194,18 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
-        return self.visitChildren(ctx)
+        # Evaluate the condition
+        condition = self.visit(ctx.expression())
+
+        if condition:
+            # If the condition is true, execute the 'if' block
+            return self.visit(ctx.statement(0))
+        elif len(ctx.statement()) > 1:
+            # If there's an 'else' block and the condition is false, execute the 'else' block
+            return self.visit(ctx.statement(1))
+
+        # If there's no 'else' block and the condition is false, do nothing
+        return None
 
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
         return self.visitChildren(ctx)
@@ -226,34 +241,166 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 self.report_error(f"Variable '{var_name}' not defined", ctx)
                 return DataType.ANY
 
-            expr_type = self.visit(ctx.assignment())
+            if ctx.assignment():
+                expr_type = self.visit(ctx.assignment())
+            else:
+                expr_type = self.visit(ctx.logicOr())
+
+            print(f"Assignment to {var_name}: {expr_type}")
+
             if symbol.data_type != DataType.ANY and symbol.data_type != expr_type:
                 self.report_error(
                     f"Type mismatch in assignment to '{var_name}', expected {symbol.data_type} but got {expr_type}",
                     ctx,
                 )
-
-            return symbol.data_type
+            return expr_type
         else:
             return self.visit(ctx.logicOr())
 
     def visitLogicOr(self, ctx: CompiscriptParser.LogicOrContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.logicAnd(0))
+
+        if len(ctx.logicAnd()) == 1:
+            return left
+
+        for i in range(1, len(ctx.logicAnd())):
+            right = self.visit(ctx.logicAnd(i))
+            if left != DataType.BOOLEAN or right != DataType.BOOLEAN:
+                self.report_error(
+                    f"Operands of OR must be boolean, got {left.name} and {right.name}",
+                    ctx,
+                )
+                return DataType.ANY
+
+        return DataType.BOOLEAN
 
     def visitLogicAnd(self, ctx: CompiscriptParser.LogicAndContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.equality(0))
+
+        if len(ctx.equality()) == 1:
+            return left
+
+        for i in range(1, len(ctx.equality())):
+            right = self.visit(ctx.equality(i))
+            if right != DataType.BOOLEAN:
+                self.report_error(
+                    f"Right operand of AND must be boolean, got {right.name}", ctx
+                )
+                return DataType.ANY
+
+        return DataType.BOOLEAN
 
     def visitEquality(self, ctx: CompiscriptParser.EqualityContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.comparison(0))
+
+        if len(ctx.comparison()) == 1:
+            return left
+
+        for i in range(1, len(ctx.comparison())):
+            op = ctx.getChild(2 * i - 1).getText()
+            right = self.visit(ctx.comparison(i))
+            if not types_comparable(left, right):
+                self.report_error(
+                    f"Type mismatch in comparison, cannot compare {left} with {right} using operator '{op}'",
+                    ctx,
+                )
+                return DataType.ANY
+
+        return DataType.BOOLEAN
 
     def visitComparison(self, ctx: CompiscriptParser.ComparisonContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.term(0))
+
+        if len(ctx.term()) == 1:
+            return left
+
+        for i in range(1, len(ctx.term())):
+            op = ctx.getChild(2 * i - 1).getText()
+            right = self.visit(ctx.term(i))
+
+            print("Comparison: ", left, op, right)
+
+            if not types_comparable(left, right):
+                self.report_error(
+                    f"Cannot compare {left.name} with {right.name} using {op}", ctx
+                )
+                return DataType.ANY
+
+        return DataType.BOOLEAN
 
     def visitTerm(self, ctx: CompiscriptParser.TermContext):
-        return self.visitChildren(ctx)
+        left = self.visit(ctx.factor(0))
+
+        for i in range(1, len(ctx.factor())):
+            op = ctx.getChild(2 * i - 1).getText()
+            right = self.visit(ctx.factor(i))
+
+            result = arithmetic_op(left, op, right)
+
+            if result is None:
+                self.report_error(
+                    f"Cannot perform operation {op} on {left.name} and {right.name}",
+                    ctx,
+                )
+                return DataType.ANY
+
+            left = result
+
+        return left
 
     def visitFactor(self, ctx: CompiscriptParser.FactorContext):
-        return self.visitChildren(ctx)
+        left = self.visitUnary(ctx.unary(0))
+
+        if len(ctx.unary()) == 1:
+            return left
+
+        for i in range(1, len(ctx.unary())):
+            op = ctx.getChild(2 * i - 1).getText()
+            right = self.visit(ctx.unary(i))
+
+            result = arithmetic_op(left, op, right)
+
+            if result is None:
+                self.report_error(
+                    f"Cannot perform operation {op} on {left.name} and {right.name}",
+                    ctx,
+                )
+                return DataType.ANY
+
+            left = result
+        return left
+
+    def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
+        if ctx.getChildCount() == 1:
+            primary = self.visit(ctx.getChild(0))
+            return primary
+
+        op = ctx.getChild(0).getText()
+        operand = self.visit(ctx.getChild(1))  # think of -1, or !true
+
+        if ctx.call() is not None:
+            return self.visit(ctx.call())
+
+        elif op == "-":
+            if operand not in [DataType.INT, DataType.FLOAT]:
+                self.report_error(
+                    f"Invalid type for unary negation. Expected numeric type, got {operand.name}",
+                    ctx,
+                )
+                return DataType.ANY
+            return operand  # The type remains the same (INT or FLOAT)
+        elif op == "!":
+            if operand != DataType.BOOLEAN:
+                self.report_error(
+                    f"Invalid type for logical NOT. Expected Boolean, got {operand.name}",
+                    ctx,
+                )
+                return DataType.ANY
+            return DataType.BOOLEAN
+
+        # If we reach here, it's an error (unexpected unary operator)
+        self.report_error(f"Unexpected unary operator: {op}", ctx)
+        return DataType.ANY
 
     def visitArray(self, ctx: CompiscriptParser.ArrayContext):
         return self.visitChildren(ctx)
@@ -268,45 +415,55 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         return self.visitChildren(ctx)
 
-    def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
-        return self.visitChildren(ctx)
-
     def visitCall(self, ctx: CompiscriptParser.CallContext):
         return self.visitChildren(ctx)
 
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
-        if ctx.NUMBER():
-            return DataType.FLOAT if "." in ctx.NUMBER().getText() else DataType.INT
-        elif ctx.STRING():
-            return DataType.STRING
-        elif ctx.IDENTIFIER():
-            var_name = ctx.IDENTIFIER().getText()
-            symbol = self.symbol_table.lookup(var_name)
-            if not symbol:
-                self.report_error(f"Variable '{var_name}' not defined", ctx)
+
+        match ctx:
+            case _ if ctx.NUMBER():
+                return DataType.FLOAT if "." in ctx.NUMBER().getText() else DataType.INT
+
+            case _ if ctx.STRING():
+                return DataType.STRING
+
+            case _ if ctx.IDENTIFIER():
+                var_name = ctx.IDENTIFIER().getText()
+                symbol = self.symbol_table.lookup(var_name)
+                if not symbol:
+                    self.report_error(f"Variable '{var_name}' not defined", ctx)
+                    return DataType.ANY
+
+                print("Variable found:", var_name, symbol.data_type)
+                return symbol.data_type
+
+            case _ if ctx.getChild(0).getText() in ["true", "false"]:
+                return DataType.BOOLEAN
+
+            case _ if ctx.getChild(0).getText() == "nil":
+                return DataType.NULL
+
+            case _ if ctx.getChild(0).getText() == "this":
+                if not self.current_class:
+                    self.report_error("'this' used outside of class context", ctx)
+                return DataType.OBJECT
+
+            case _ if ctx.expression():
+                return self.visit(ctx.expression())
+
+            case _ if ctx.getChild(0).getText() == "super":
+                if not self.current_class or not self.current_class.superclass:
+                    self.report_error("Invalid use of 'super'", ctx)
+                return DataType.OBJECT
+
+            case _ if ctx.array():
+                return DataType.ARRAY
+
+            case _ if ctx.instantiation():
+                return DataType.OBJECT
+
+            case _:
                 return DataType.ANY
-            return symbol.data_type
-        elif (
-            ctx.getChild(0).getText() == "true" or ctx.getChild(0).getText() == "false"
-        ):
-            return DataType.BOOLEAN
-        elif ctx.getChild(0).getText() == "nil":
-            return DataType.ANY
-        elif ctx.getChild(0).getText() == "this":
-            if not self.current_class:
-                self.report_error("'this' used outside of class context", ctx)
-            return DataType.OBJECT
-        elif ctx.expression():
-            return self.visit(ctx.expression())
-        elif ctx.getChild(0).getText() == "super":
-            if not self.current_class or not self.current_class.superclass:
-                self.report_error("Invalid use of 'super'", ctx)
-            return DataType.OBJECT
-        elif ctx.array():
-            return DataType.ARRAY
-        elif ctx.instantiation():
-            return DataType.OBJECT
-        return DataType.ANY
 
     def visitParameters(self, ctx: CompiscriptParser.ParametersContext):
         for param in ctx.IDENTIFIER():
