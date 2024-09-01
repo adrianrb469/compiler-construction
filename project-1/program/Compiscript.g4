@@ -16,7 +16,12 @@ statement:
 	| printStmt
 	| returnStmt
 	| whileStmt
+	| breakStmt
+	| continueStmt
 	| block;
+
+breakStmt: 'break' ';';
+continueStmt: 'continue' ';';
 
 exprStmt: expression ';';
 forStmt:

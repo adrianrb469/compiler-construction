@@ -16,6 +16,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_class = None
         self.current_function = None
         self.errors: List[str] = []
+        self.loop_depth = 0
 
     def report_error(self, message: str, ctx):
         line = ctx.start.line
@@ -125,7 +126,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_class = None
 
         return None
-    
+
     def visitInit(self, ctx: CompiscriptParser.InitContext):
         # verify that the initializer is in a class context
         if not self.current_class:
@@ -222,7 +223,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitForStmt(self, ctx: CompiscriptParser.ForStmtContext):
-        return self.visitChildren(ctx)
+        self.symbol_table.enter_scope("for")
+        self.loop_depth += 1
+
+        # Initializer
+        if ctx.varDecl():
+            self.visit(ctx.varDecl())
+        elif ctx.exprStmt():
+            self.visit(ctx.exprStmt())
+        # If neither, it's an empty initializer (just a semicolon)
+
+        # Condition
+        if ctx.expression(0):
+            condition_type = self.visit(ctx.expression(0))
+            if condition_type != DataType.BOOLEAN:
+                self.report_error(
+                    f"For loop condition must be a boolean, got {condition_type}",
+                    ctx.expression(0),
+                )
+
+        # Increment
+        if ctx.expression(1):
+            self.visit(ctx.expression(1))
+
+        # Body
+        self.visit(ctx.statement())
+        self.symbol_table.exit_scope()
+
+        self.loop_depth -= 1
+        return None
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
         condition = self.visit(ctx.expression())
@@ -245,10 +274,55 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitReturnStmt(self, ctx: CompiscriptParser.ReturnStmtContext):
-        return self.visitChildren(ctx)
+        if not self.current_function:
+            self.report_error("Return statement outside of function", ctx)
+            return None
+
+        if ctx.expression():
+            return_type = self.visit(ctx.expression())
+            if self.current_function.data_type == DataType.VOID:
+                self.report_error("Cannot return a value from a void function", ctx)
+            elif (
+                self.current_function.data_type is not DataType.ANY
+                and return_type != self.current_function.data_type
+            ):
+                self.report_error(
+                    f"Return type mismatch. Expected {self.current_function.data_type}, got {return_type}",
+                    ctx,
+                )
+        elif self.current_function.data_type != DataType.VOID:
+            self.report_error(
+                f"Function must return a value of type {self.current_function.data_type}",
+                ctx,
+            )
+
+        return None  # Return statements don't have a type themselves
 
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
-        return self.visitChildren(ctx)
+        self.loop_depth += 1
+        condition_type = self.visit(ctx.expression())
+        if condition_type != DataType.BOOLEAN:
+            self.report_error(
+                f"While condition must be a boolean, got {condition_type}",
+                ctx.expression(),
+            )
+
+        self.symbol_table.enter_scope("while")
+        self.visit(ctx.statement())
+        self.symbol_table.exit_scope()
+        self.loop_depth -= 1
+        return None  # While statements don't have a type
+
+    def visitBreakStmt(self, ctx: CompiscriptParser.BreakStmtContext):
+        if self.loop_depth == 0:
+            print("Break statement outside of loop")
+            self.report_error("'break' statement outside of loop", ctx)
+        return None
+
+    def visitContinueStmt(self, ctx: CompiscriptParser.ContinueStmtContext):
+        if self.loop_depth == 0:
+            self.report_error("'continue' statement outside of loop", ctx)
+        return None
 
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
         self.symbol_table.enter_scope("block")  # does it need a name?
@@ -269,33 +343,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
         if ctx.IDENTIFIER():
-
-            # handle class attributes assignment: this.attribute = value
-            if ctx.call().primary().getText() == "this":
-                if not self.current_class:
-                    self.report_error("'this' used outside of class context", ctx)
-                    return DataType.ANY
-                
-                # get the attribute name
-                attr_name = ctx.IDENTIFIER().getText()
-                # get the attribute type
-                
-                # get the attribute type
-                if ctx.assignment():
-                    expr_type = self.visit(ctx.assignment())
-                
-                # check if the attribute is defined in the class
-                if attr_name not in self.current_class.attributes:
-                    self.report_error(f"Attribute '{attr_name}' not defined in class '{self.current_class.name}'", ctx)
-                    return DataType.ANY
-                
-                # assign the attribute to the current class
-                # current scope route is: global -> class -> init -> block
-                # so we need to update the attribute in the class scope
-                self.symbol_table.current_scope.parent.parent.symbols[attr_name].data_type = expr_type
-                return expr_type
-
-
             var_name = ctx.IDENTIFIER().getText()
             symbol = self.symbol_table.lookup(var_name)
             if not symbol:
@@ -493,7 +540,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     self.report_error(f"Variable '{var_name}' not defined", ctx)
                     return DataType.ANY
 
-                print("Variable found:", var_name, symbol.data_type)
+                print("Variable found:", var_name, symbol.data_type, ctx.start.line)
                 return symbol.data_type
 
             case _ if ctx.getChild(0).getText() in ["true", "false"]:
