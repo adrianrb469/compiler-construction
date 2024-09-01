@@ -254,21 +254,28 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
-        condition = self.visit(ctx.expression())
-
-        if condition != DataType.BOOLEAN:
+        condition_type = self.visit(ctx.expression())
+        if condition_type != DataType.BOOLEAN:
             self.report_error(
-                f"Condition in if statement must evaluate to Boolean, got {condition.name}",
+                f"Condition in if statement must evaluate to Boolean, got {condition_type.name}",
                 ctx,
             )
             return None
 
-        if condition:
-            return self.visit(ctx.statement(0))
-        elif len(ctx.statement()) > 1:
-            return self.visit(ctx.statement(1))
+        # 'If' branch
+        self.symbol_table.enter_scope("if")
+        result = self.visit(ctx.statement(0))
+        self.symbol_table.exit_scope()
 
-        return None
+        # 'Else' branch (if it exists)
+        if len(ctx.statement()) > 1:
+            self.symbol_table.enter_scope("else")
+            else_result = self.visit(ctx.statement(1))
+            self.symbol_table.exit_scope()
+        else:
+            else_result = None
+
+        return result if condition_type else else_result
 
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
         return self.visitChildren(ctx)
@@ -325,10 +332,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
-        self.symbol_table.enter_scope("block")  # does it need a name?
+        # self.symbol_table.enter_scope("block")  # does it need a name?
         for declaration in ctx.declaration():
             self.visit(declaration)
-        self.symbol_table.exit_scope()
+        # self.symbol_table.exit_scope()
         return None
 
     def visitFunAnon(self, ctx: CompiscriptParser.FunAnonContext):
