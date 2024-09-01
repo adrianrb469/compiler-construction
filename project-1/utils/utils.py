@@ -1,5 +1,5 @@
-from typing import Optional
-from program.SymbolTable import DataType
+from typing import List, Optional
+from program.SymbolTable import DataType, FunctionSymbol
 
 
 def getDeclType(type: str) -> str:
@@ -43,3 +43,22 @@ def arithmetic_op(left: DataType, op: str, right: DataType) -> Optional[DataType
             if left == DataType.INT and right == DataType.INT:
                 return DataType.INT
     return None
+
+
+def valid_arguments(function: FunctionSymbol, args: List[DataType], ctx) -> bool:
+    if len(function.parameters) != len(args):
+        self.report_error(
+            f"Function '{function.name}' expects {len(function.parameters)} arguments, but got {len(args)}",
+            ctx,
+        )
+        return False
+
+    for i, (param, arg) in enumerate(zip(function.parameters, args)):
+        if param.data_type != DataType.ANY and param.data_type != arg:
+            self.report_error(
+                f"Argument {i+1} of function '{function.name}' expects {param.data_type.name}, but got {arg.name}",
+                ctx,
+            )
+            return False
+
+    return True

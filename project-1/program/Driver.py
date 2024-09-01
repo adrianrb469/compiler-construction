@@ -6,7 +6,14 @@ from antlr4 import *
 from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
 from .CompiscriptVisitor import CompiscriptVisitor
-from .SymbolTable import ClassSymbol, DataType, FunctionSymbol, SymbolTable, SymbolType, Symbol
+from .SymbolTable import (
+    ClassSymbol,
+    DataType,
+    FunctionSymbol,
+    SymbolTable,
+    SymbolType,
+    Symbol,
+)
 from utils.utils import getDeclType, types_comparable, arithmetic_op
 
 
@@ -22,14 +29,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def report_error(self, message: str, ctx):
         line = ctx.start.line
         column = ctx.start.column
+        print(f"Error at line {line}, column {column}: {message}")
         self.errors.append(f"Error at line {line}, column {column}: {message}")
 
     def visitProgram(self, ctx: CompiscriptParser.ProgramContext):
         for declaration in ctx.declaration():
             self.visit(declaration)
 
-        for error in self.errors:
-            print(error)
         return None
 
     def visitDeclaration(self, ctx: CompiscriptParser.DeclarationContext):
@@ -43,8 +49,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visitStatement(ctx.statement())
 
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
-        # Get the class name
         class_name = ctx.IDENTIFIER(0).getText()
+
         if self.symbol_table.lookup(class_name, current_scope_only=True):
             exp_type = str(
                 self.symbol_table.lookup(class_name, current_scope_only=True).data_type
@@ -55,18 +61,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
             )
             return None
 
-        # Manage inheritance
-        extensions = ctx.IDENTIFIER()
-        parent_classes = []
-        if len(extensions) > 1:
-            parent_class_name = extensions[1].getText()
-            parent_class = self.symbol_table.lookup(parent_class_name)
-            if not parent_class:
-                self.report_error(f"Class '{parent_class_name}' not defined", ctx)
-                return None
-            parent_classes.append(parent_class)
-
-        # Create the new class symbol
         new_class = self.symbol_table.declare_symbol(
             class_name,
             SymbolType.CLASS,
@@ -74,50 +68,52 @@ class CompiscriptCompiler(CompiscriptVisitor):
             ctx.start.line,
             ctx.start.column,
         )
+
+        # Inheritance
+        extensions = ctx.IDENTIFIER()
+        parent_class = None
+        if len(extensions) > 1:
+            parent_class_name = extensions[1].getText()
+            parent_class = self.symbol_table.lookup(parent_class_name)
+            if not parent_class:
+                self.report_error(f"Class '{parent_class_name}' not defined", ctx)
+                return None
+            if not isinstance(parent_class, ClassSymbol):
+                self.report_error(f"'{parent_class_name}' is not a class", ctx)
+                return None
+
+            new_class.superclass = parent_class
+
         assert isinstance(new_class, ClassSymbol)
 
         # Enter the class scope
         self.symbol_table.enter_scope(class_name)
         self.current_class = new_class
 
-        # Inherit methods from parent class
-        for parent_class in parent_classes:
-            print(f"parent class methods: {parent_class.methods}")
-            for method_name, method in parent_class.methods.items():
-                print(
-                    f"Inheriting method in {class_name} from {parent_class.name}:",
-                    method_name,
-                )
-                if method_name not in new_class.methods:
-                    # add the inherited method to the new class methods dictionary
-                    new_class.methods[method_name] = method
-                    # Also add the inherited method to the current scope
-                    self.symbol_table.declare_symbol(
-                        method_name,
-                        SymbolType.FUNCTION,
-                        method.data_type,
-                        ctx.start.line,
-                        ctx.start.column,
-                    )
+        if parent_class:
+            # ! This will copy fields and methods from the parent class
+            new_class.inherit(parent_class)
 
+        # We visit the methods manually, to handle the initializer
         methods = ctx.methods()
         init_count = 0
-
         for method in methods.getChildren():
             if isinstance(method, CompiscriptParser.InitContext):
-                # print(f"Found initializer in class {class_name}")
-                self.in_init = True  # Set the flag when entering init
+                self.in_init = True
                 self.symbol_table.enter_scope("init")
                 self.visit(method)
                 self.symbol_table.exit_scope()
-                self.in_init = False  # Reset the flag when exiting init
+                self.in_init = False
                 init_count += 1
                 if init_count > 1:
-                    self.report_error(f'Multiple initializers found in class "{class_name}"', ctx)
+                    self.report_error(
+                        f'Multiple initializers found in class "{class_name}"', ctx
+                    )
                     return None
             else:
                 self.visit(method)
 
+        # Exit the class scope
         self.symbol_table.exit_scope()
         self.current_class = None
 
@@ -160,10 +156,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return None
 
         if ctx.expression():
-            print(
-                f"Declaring variable {var_name} with type {self.visit(ctx.expression())}"
-            )
-
             expr_type = self.visit(ctx.expression())
             self.symbol_table.declare_symbol(
                 var_name,
@@ -321,7 +313,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitBreakStmt(self, ctx: CompiscriptParser.BreakStmtContext):
         if self.loop_depth == 0:
-            print("Break statement outside of loop")
+
             self.report_error("'break' statement outside of loop", ctx)
         return None
 
@@ -347,16 +339,31 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visit(ctx.funAnon())
         return DataType.ANY
 
+    def are_types_compatible(self, expected: DataType, actual: DataType):
+        if expected == DataType.ANY or actual == DataType.ANY:
+            return True
+        return expected == actual
+
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
 
-        if ctx.call() and ctx.call().primary() and ctx.call().primary().getText() == "this" and self.in_init and ctx.IDENTIFIER():
+        # this. in init method have to be handled differently,
+        # they create a new property in the current class and assign it a value
+        if (
+            ctx.call()
+            and ctx.call().primary()
+            and ctx.call().primary().getText() == "this"
+            and self.in_init
+            and ctx.IDENTIFIER()
+        ):
             # Handle 'this.' assignment in init method
             if not self.current_class:
                 self.report_error("'this' used outside of class context", ctx)
                 return DataType.ANY
 
             property_name = ctx.IDENTIFIER().getText()
-            expr_type = self.visit(ctx.assignment() if ctx.assignment() else ctx.logicOr())
+            expr_type = self.visit(
+                ctx.assignment() if ctx.assignment() else ctx.logicOr()
+            )
 
             # Check if the property is already defined in the current class
             if self.current_class.get_field(property_name):
@@ -367,18 +374,64 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 return DataType.ANY
 
             # Add the property to the current class
-            self.current_class.add_field(Symbol(
+            self.current_class.add_field(
+                Symbol(
+                    property_name,
+                    SymbolType.VARIABLE,
+                    expr_type,
+                    ctx.start.line,
+                    ctx.start.column,
+                )
+            )
+
+            # ? Should we declare the property as a symbol in the symbol table?
+            self.symbol_table.declare_symbol(
                 property_name,
                 SymbolType.VARIABLE,
                 expr_type,
                 ctx.start.line,
-                ctx.start.column
-            ))
-            # print(f"Added property '{property_name}' to class '{self.current_class.name}' with type {expr_type}")
+                ctx.start.column,
+            )
+            return expr_type
+
+        # Handle regular this.var = value assignments
+        if (
+            ctx.call()
+            and ctx.call().primary()
+            and ctx.call().primary().getText() == "this"
+        ):
+            # To handle this, we just have to check if we're in a class context,
+            # then check if the property exists in the class
+            # and finally check if the assignment is valid
+            if not self.current_class:
+                self.report_error("'this' used outside of class context", ctx)
+                return DataType.ANY
+
+            property_name = ctx.IDENTIFIER().getText()
+            symbol = self.current_class.get_field(property_name)
+            if not symbol:
+
+                self.report_error(
+                    f"Property '{property_name}' not defined in class '{self.current_class.name}'",
+                    ctx,
+                )
+                return DataType.ANY
+
+            expr_type = self.visit(
+                ctx.assignment() if ctx.assignment() else ctx.logicOr()
+            )
+            if not self.are_types_compatible(symbol.data_type, expr_type):
+                self.report_error(
+                    f"Type mismatch in assignment to '{property_name}', expected {symbol.data_type} but got {expr_type}",
+                    ctx,
+                )
+                return DataType.ANY
+
             return expr_type
 
         if ctx.IDENTIFIER():
             var_name = ctx.IDENTIFIER().getText()
+
             symbol = self.symbol_table.lookup(var_name)
             if not symbol:
                 self.report_error(f"Variable '{var_name}' not defined", ctx)
@@ -388,8 +441,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 expr_type = self.visit(ctx.assignment())
             else:
                 expr_type = self.visit(ctx.logicOr())
-
-            print(f"Assignment to {var_name}: {expr_type}")
 
             if symbol.data_type != DataType.ANY and symbol.data_type != expr_type:
                 self.report_error(
@@ -547,7 +598,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
-        print("Instantiation of class" + ctx.IDENTIFIER().getText())
+
         # if the class is not defined, report an error
         class_name = ctx.IDENTIFIER().getText()
         if not self.symbol_table.lookup(class_name):
@@ -556,55 +607,307 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         return self.visitChildren(ctx)
 
+    # Helper functions for call handling
+
+    def validate_arguments(
+        self, func_symbol: FunctionSymbol, args: List[DataType], ctx
+    ):
+
+        def are_types_compatible(self, expected: DataType, actual: DataType):
+            if expected == DataType.ANY or actual == DataType.ANY:
+                return True
+            return expected == actual
+
+        # The obvious case first, mismatch in number of arguments
+        if len(args) != len(func_symbol.parameters):
+            self.report_error(
+                f"Expected {len(func_symbol.parameters)} arguments, but got {len(args)}",
+                ctx,
+            )
+            return False
+
+        # Now, we need to check if the types of the arguments match the expected types
+        for i, (param, arg) in enumerate(zip(func_symbol.parameters, args)):
+            if not self.are_types_compatible(param.data_type, arg):
+                self.report_error(
+                    f"Argument {i+1} type mismatch. Expected {param.data_type}, but got {arg}",
+                    ctx,
+                )
+                return False
+
+        return True
+
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        return self.visitChildren(ctx)
+        # primary ( '.' IDENTIFIER | '[' expression ']' | '(' arguments? ')' )*
+        result = self.visit(ctx.primary())
+        for i in range(1, len(ctx.children) - 1, 2):
 
-    def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
+            print("Primary Text: ", ctx.primary().getText())
 
-        match ctx:
-            case _ if ctx.NUMBER():
-                return DataType.FLOAT if "." in ctx.NUMBER().getText() else DataType.INT
+            child = ctx.getChild(i)
+            # Function call
+            if child.getText() == "(":
+                primary = ctx.primary()
+                is_super_call = False
+                function_name = primary.getText()
 
-            case _ if ctx.STRING():
-                return DataType.STRING
+                # Check if it's a method call on super
+                if (
+                    isinstance(primary, CompiscriptParser.PrimaryContext)
+                    and primary.getChildCount() > 1
+                ):
+                    if (
+                        primary.getChild(0).getText() == "super"
+                        and primary.getChild(1).getText() == "."
+                    ):
+                        is_super_call = True
+                        function_name = primary.getChild(2).getText()
 
-            case _ if ctx.IDENTIFIER():
-                var_name = ctx.IDENTIFIER().getText()
-                symbol = self.symbol_table.lookup(var_name)
-                if not symbol:
-                    self.report_error(f"Variable '{var_name}' not defined", ctx)
+                arguments = []
+                if i + 1 < len(ctx.children) and isinstance(
+                    ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext
+                ):
+                    args_ctx = ctx.getChild(i + 1)
+                    # Hopefully this is a list of DataTypes
+                    arguments = [self.visit(arg) for arg in args_ctx.expression()]
+
+                function = None
+
+                if is_super_call:
+                    if not self.current_class:
+                        self.report_error(
+                            "Attempt to call 'super' outside of class context", ctx
+                        )
+                        return DataType.ANY
+                    if self.current_class.superclass is None:
+                        self.report_error(
+                            f"Class '{self.current_class.name}' does not have a parent class",
+                            ctx,
+                        )
+                        return DataType.ANY
+
+                    symbol = self.symbol_table.lookup(self.current_class.superclass)
+
+                    if not isinstance(symbol, ClassSymbol):
+                        self.report_error(
+                            f"Superclass '{self.current_class.superclass}' not found",
+                            ctx,
+                        )
+                        return DataType.ANY
+
+                    parent_function = symbol.get_method(function_name)
+
+                    if not parent_function:
+                        self.report_error(
+                            f"Parent class '{self.current_class.superclass}' has no function '{function_name}'",
+                            ctx,
+                        )
+                        return DataType.ANY
+                    function = parent_function
+                else:
+                    symbol = self.symbol_table.lookup(function_name)
+                    if symbol is None:
+                        self.report_error(
+                            f"Function '{function_name}' not defined", ctx
+                        )
+                        return DataType.ANY
+                    if not isinstance(symbol, FunctionSymbol):
+                        self.report_error(f"'{function_name}' is not a function", ctx)
+                        return DataType.ANY
+                    function = symbol
+
+                if function is not None:
+
+                    if not self.validate_arguments(function, arguments, ctx):
+                        return DataType.ANY
+                    result = function.data_type
+            # Property access
+            elif child.getText() == ".":
+
+                property_name = ctx.getChild(i + 1).getText()
+                is_method_call = (
+                    i + 2 < len(ctx.children) and ctx.getChild(i + 2).getText() == "("
+                )
+
+                if result != DataType.OBJECT:
+                    self.report_error("Property access is only allowed on objects", ctx)
                     return DataType.ANY
 
-                print("Variable found:", var_name, symbol.data_type, ctx.start.line)
-                return symbol.data_type
+                # We have three cases:
+                # 1. Accessing a field of the current class (this.property)
+                # 2. Accessing a field of a superclass (super.property)
+                # 3. Accessing a field of a variable (variable.property)
 
-            case _ if ctx.getChild(0).getText() in ["true", "false"]:
-                return DataType.BOOLEAN
+                # case 1
+                if ctx.primary().getText() == "this":
 
-            case _ if ctx.getChild(0).getText() == "nil":
-                return DataType.NULL
+                    if not self.current_class:
+                        self.report_error("'this' used outside of class context", ctx)
+                        return DataType.ANY
+                    class_symbol = self.current_class
+                    member_name = property_name
 
-            case _ if ctx.getChild(0).getText() == "this":
-                if not self.current_class:
-                    self.report_error("'this' used outside of class context", ctx)
-                return DataType.OBJECT
+                    method = class_symbol.get_method(member_name)
+                    field = class_symbol.get_field(member_name)
 
-            case _ if ctx.expression():
-                return self.visit(ctx.expression())
+                    if method and field:
+                        self.report_error(
+                            f"Ambiguous reference to '{member_name}' in class '{class_symbol.name}': both method and field exist",
+                            ctx,
+                        )
+                        return DataType.ANY
+                    elif method:
+                        if not is_method_call:
+                            self.report_error(
+                                f"'{member_name}' is a method but it's being accessed as a property",
+                                ctx,
+                            )
+                            return DataType.ANY
 
-            case _ if ctx.getChild(0).getText() == "super":
-                if not self.current_class or not self.current_class.superclass:
-                    self.report_error("Invalid use of 'super'", ctx)
-                return DataType.OBJECT
+                        # Handle method call with argument validation
+                        arguments = []
+                        if i + 3 < len(ctx.children) and isinstance(
+                            ctx.getChild(i + 3), CompiscriptParser.ArgumentsContext
+                        ):
+                            args_ctx = ctx.getChild(i + 3)
+                            arguments = [
+                                self.visit(arg) for arg in args_ctx.expression()
+                            ]
 
-            case _ if ctx.array():
-                return DataType.ARRAY
+                        if not self.validate_arguments(method, arguments, ctx):
+                            return DataType.ANY
 
-            case _ if ctx.instantiation():
-                return DataType.OBJECT
+                        return method.data_type
+                    elif field:
+                        if is_method_call:
+                            self.report_error(
+                                f"'{member_name}' is a property but it's being called as a method",
+                                ctx,
+                            )
+                            return DataType.ANY
+                        return field.data_type
+                    else:
+                        self.report_error(
+                            f"'{member_name}' is not defined in class '{class_symbol.name}'",
+                            ctx,
+                        )
+                        return DataType.ANY
 
-            case _:
+                # case 2
+                elif ctx.primary().getText() == "super":
+                    if not self.current_class:
+                        self.report_error("'super' used outside of class context", ctx)
+                        return DataType.ANY
+
+                    if not self.current_class.superclass:
+                        self.report_error(
+                            f"Class '{self.current_class.name}' does not have a parent class",
+                            ctx,
+                        )
+                        return DataType.ANY
+
+                    symbol = self.current_class.superclass.get_field(property_name)
+
+                    if not symbol:
+                        self.report_error(
+                            f"Property '{property_name}' not defined in superclass '{self.current_class.superclass}'",
+                            ctx,
+                        )
+                        return DataType.ANY
+                    result = symbol.data_type
+
+                # case 3
+                else:
+                    symbol = self.symbol_table.lookup(property_name)
+                    if not symbol:
+                        self.report_error(
+                            f"Variable '{property_name}' not defined", ctx
+                        )
+                        return DataType.ANY
+                    result = symbol.data_type
+
+            # Array indexing
+            elif child.getText() == "[":
+                index_expr = ctx.getChild(i + 1)
+                index_type = self.visit(index_expr)
+                if index_type != DataType.INT:
+                    self.report_error("Array index must be an integer", ctx)
+                    return DataType.ANY
+                if result != DataType.ARRAY:
+                    self.report_error("Indexing is only allowed on arrays", ctx)
+                    return DataType.ANY
+                # For simplicity, we assume all array elements are of type ANY
+                result = DataType.ANY
+
+        if ctx.funAnon():
+            return self.visit(ctx.funAnon())
+
+        return result
+
+    def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
+        if ctx.NUMBER():
+            return DataType.FLOAT if "." in ctx.NUMBER().getText() else DataType.INT
+        elif ctx.STRING():
+            return DataType.STRING
+
+        elif ctx.getChild(0).getText() == "super":
+            if not self.current_class:
+                self.report_error("'super' used outside of class context", ctx)
                 return DataType.ANY
+            if not self.current_class.superclass:
+                self.report_error(
+                    f"Class '{self.current_class.name}' does not have a parent class",
+                    ctx,
+                )
+                return DataType.ANY
+
+            identifier = ctx.IDENTIFIER().getText()
+            superclass_symbol = self.symbol_table.lookup(self.current_class.superclass)
+
+            if not isinstance(superclass_symbol, ClassSymbol):
+                self.report_error(
+                    f"Superclass '{self.current_class.superclass}' not found or not a class",
+                    ctx,
+                )
+                return DataType.ANY
+
+            # Check if it's a method or a field
+            method = superclass_symbol.get_method(identifier)
+            if method:
+                return method.data_type
+
+            field = superclass_symbol.get_field(identifier)
+            if field:
+                return field.data_type
+
+            self.report_error(
+                f"'{identifier}' not found in superclass '{self.current_class.superclass}'",
+                ctx,
+            )
+            return DataType.ANY
+        elif ctx.IDENTIFIER():
+            var_name = ctx.IDENTIFIER().getText()
+            symbol = self.symbol_table.lookup(var_name)
+            if not symbol:
+                self.report_error(f"!! Variable '{var_name}' not defined", ctx)
+                return DataType.ANY
+            return symbol.data_type
+        elif ctx.getChild(0).getText() in ["true", "false"]:
+            return DataType.BOOLEAN
+        elif ctx.getChild(0).getText() == "nil":
+            return DataType.NULL
+        elif ctx.getChild(0).getText() == "this":
+            if not self.current_class:
+                self.report_error("'this' used outside of class context", ctx)
+            return DataType.OBJECT
+        elif ctx.expression():
+            return self.visit(ctx.expression())
+        elif ctx.array():
+            return DataType.ARRAY
+        elif ctx.instantiation():
+            return self.visit(ctx.instantiation())
+        else:
+            return DataType.ANY
 
     def visitParameters(self, ctx: CompiscriptParser.ParametersContext):
         for param in ctx.IDENTIFIER():
@@ -673,5 +976,13 @@ def compiler(code):
 
         return tree_str, errors, table
     except Exception as e:
-        print("Error compiling code", e)
-        return None, [str(e)], None
+        import traceback
+
+        error_type = type(e).__name__
+        error_message = str(e)
+        tb = traceback.extract_tb(e.__traceback__)
+        filename, line_number, func_name, text = tb[-1]
+        error_location = f"File {filename}, line {line_number}, in {func_name}"
+        full_error_message = f"{error_type} at {error_location}: {error_message}"
+        print("Error compiling code:", full_error_message)
+        return None, [full_error_message], None

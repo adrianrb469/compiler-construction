@@ -118,12 +118,12 @@ def serializedATN():
         291,1,0,0,0,293,294,1,0,0,0,294,298,1,0,0,0,295,293,1,0,0,0,296,
         298,3,30,15,0,297,279,1,0,0,0,297,296,1,0,0,0,298,57,1,0,0,0,299,
         316,5,39,0,0,300,316,5,40,0,0,301,316,5,41,0,0,302,316,5,42,0,0,
-        303,316,5,44,0,0,304,316,5,45,0,0,305,316,5,46,0,0,306,307,5,12,
-        0,0,307,308,3,34,17,0,308,309,5,13,0,0,309,316,1,0,0,0,310,311,5,
-        43,0,0,311,312,5,20,0,0,312,316,5,46,0,0,313,316,3,50,25,0,314,316,
+        303,304,5,43,0,0,304,305,5,20,0,0,305,316,5,46,0,0,306,316,5,44,
+        0,0,307,316,5,45,0,0,308,316,5,46,0,0,309,310,5,12,0,0,310,311,3,
+        34,17,0,311,312,5,13,0,0,312,316,1,0,0,0,313,316,3,50,25,0,314,316,
         3,52,26,0,315,299,1,0,0,0,315,300,1,0,0,0,315,301,1,0,0,0,315,302,
-        1,0,0,0,315,303,1,0,0,0,315,304,1,0,0,0,315,305,1,0,0,0,315,306,
-        1,0,0,0,315,310,1,0,0,0,315,313,1,0,0,0,315,314,1,0,0,0,316,59,1,
+        1,0,0,0,315,303,1,0,0,0,315,306,1,0,0,0,315,307,1,0,0,0,315,308,
+        1,0,0,0,315,309,1,0,0,0,315,313,1,0,0,0,315,314,1,0,0,0,316,59,1,
         0,0,0,317,320,3,62,31,0,318,320,3,32,16,0,319,317,1,0,0,0,319,318,
         1,0,0,0,320,323,1,0,0,0,321,319,1,0,0,0,321,322,1,0,0,0,322,61,1,
         0,0,0,323,321,1,0,0,0,324,325,5,46,0,0,325,327,5,12,0,0,326,328,
@@ -2334,14 +2334,14 @@ class CompiscriptParser ( Parser ):
             super().__init__(parent, invokingState)
             self.parser = parser
 
+        def IDENTIFIER(self):
+            return self.getToken(CompiscriptParser.IDENTIFIER, 0)
+
         def NUMBER(self):
             return self.getToken(CompiscriptParser.NUMBER, 0)
 
         def STRING(self):
             return self.getToken(CompiscriptParser.STRING, 0)
-
-        def IDENTIFIER(self):
-            return self.getToken(CompiscriptParser.IDENTIFIER, 0)
 
         def expression(self):
             return self.getTypedRuleContext(CompiscriptParser.ExpressionContext,0)
@@ -2403,38 +2403,38 @@ class CompiscriptParser ( Parser ):
                 self.state = 302
                 self.match(CompiscriptParser.T__41)
                 pass
-            elif token in [44]:
+            elif token in [43]:
                 self.enterOuterAlt(localctx, 5)
                 self.state = 303
-                self.match(CompiscriptParser.NUMBER)
-                pass
-            elif token in [45]:
-                self.enterOuterAlt(localctx, 6)
+                self.match(CompiscriptParser.T__42)
                 self.state = 304
-                self.match(CompiscriptParser.STRING)
-                pass
-            elif token in [46]:
-                self.enterOuterAlt(localctx, 7)
+                self.match(CompiscriptParser.T__19)
                 self.state = 305
                 self.match(CompiscriptParser.IDENTIFIER)
                 pass
-            elif token in [12]:
-                self.enterOuterAlt(localctx, 8)
+            elif token in [44]:
+                self.enterOuterAlt(localctx, 6)
                 self.state = 306
-                self.match(CompiscriptParser.T__11)
-                self.state = 307
-                self.expression()
-                self.state = 308
-                self.match(CompiscriptParser.T__12)
+                self.match(CompiscriptParser.NUMBER)
                 pass
-            elif token in [43]:
-                self.enterOuterAlt(localctx, 9)
-                self.state = 310
-                self.match(CompiscriptParser.T__42)
-                self.state = 311
-                self.match(CompiscriptParser.T__19)
-                self.state = 312
+            elif token in [45]:
+                self.enterOuterAlt(localctx, 7)
+                self.state = 307
+                self.match(CompiscriptParser.STRING)
+                pass
+            elif token in [46]:
+                self.enterOuterAlt(localctx, 8)
+                self.state = 308
                 self.match(CompiscriptParser.IDENTIFIER)
+                pass
+            elif token in [12]:
+                self.enterOuterAlt(localctx, 9)
+                self.state = 309
+                self.match(CompiscriptParser.T__11)
+                self.state = 310
+                self.expression()
+                self.state = 311
+                self.match(CompiscriptParser.T__12)
                 pass
             elif token in [34]:
                 self.enterOuterAlt(localctx, 10)

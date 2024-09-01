@@ -59,7 +59,7 @@ class ClassSymbol(Symbol):
         self.methods: Dict[str, "FunctionSymbol"] = {}
         self.fields: Dict[str, Symbol] = {}
 
-    def inherit_from(self, parent: "ClassSymbol"):
+    def inherit(self, parent: "ClassSymbol"):
         self.superclass = parent.name
         self.methods = parent.methods.copy()
         self.fields = parent.fields.copy()

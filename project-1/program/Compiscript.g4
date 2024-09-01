@@ -62,11 +62,11 @@ primary:
 	| 'false'
 	| 'nil'
 	| 'this'
+	| 'super' '.' IDENTIFIER
 	| NUMBER
 	| STRING
 	| IDENTIFIER
 	| '(' expression ')'
-	| 'super' '.' IDENTIFIER
 	| array
 	| instantiation;
 
