@@ -6,7 +6,7 @@ from antlr4 import *
 from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
 from .CompiscriptVisitor import CompiscriptVisitor
-from .SymbolTable import ClassSymbol, DataType, FunctionSymbol, SymbolTable, SymbolType
+from .SymbolTable import ClassSymbol, DataType, FunctionSymbol, SymbolTable, SymbolType, Symbol
 from utils.utils import getDeclType, types_comparable, arithmetic_op
 
 
@@ -17,6 +17,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_function = None
         self.errors: List[str] = []
         self.loop_depth = 0
+        self.in_init = False  # New flag to track if we're inside an init method
 
     def report_error(self, message: str, ctx):
         line = ctx.start.line
@@ -104,24 +105,19 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         for method in methods.getChildren():
             if isinstance(method, CompiscriptParser.InitContext):
-                # find if there are this.varname in the init
-                # if there are, add them to the class symbol table
-
-                print(f"Found initializer in class {class_name}")
+                # print(f"Found initializer in class {class_name}")
+                self.in_init = True  # Set the flag when entering init
                 self.symbol_table.enter_scope("init")
                 self.visit(method)
                 self.symbol_table.exit_scope()
+                self.in_init = False  # Reset the flag when exiting init
                 init_count += 1
                 if init_count > 1:
-                    self.report_error(
-                        f'Multiple initializers found in class "{class_name}"', ctx
-                    )
+                    self.report_error(f'Multiple initializers found in class "{class_name}"', ctx)
                     return None
-            self.visit(method)
+            else:
+                self.visit(method)
 
-        print(f"this statements: {vars(new_class.attributes)}")
-
-        # Exit the class scope
         self.symbol_table.exit_scope()
         self.current_class = None
 
@@ -134,10 +130,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return None
 
         # Get the initializer name as this.attribute = value
-        parameters = ctx.parameters()
+        parameters = []
+
+        if ctx.parameters():
+            parameters = ctx.parameters().IDENTIFIER()
 
         # save parameters as a normal function
-        for param in parameters.IDENTIFIER():
+        for param in parameters:
             param_name = param.getText()
             self.symbol_table.declare_symbol(
                 param_name,
@@ -349,6 +348,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return DataType.ANY
 
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
+
+        if ctx.call() and ctx.call().primary() and ctx.call().primary().getText() == "this" and self.in_init and ctx.IDENTIFIER():
+            # Handle 'this.' assignment in init method
+            if not self.current_class:
+                self.report_error("'this' used outside of class context", ctx)
+                return DataType.ANY
+
+            property_name = ctx.IDENTIFIER().getText()
+            expr_type = self.visit(ctx.assignment() if ctx.assignment() else ctx.logicOr())
+
+            # Check if the property is already defined in the current class
+            if self.current_class.get_field(property_name):
+                self.report_error(
+                    f"Property '{property_name}' already defined in class '{self.current_class.name}'",
+                    ctx,
+                )
+                return DataType.ANY
+
+            # Add the property to the current class
+            self.current_class.add_field(Symbol(
+                property_name,
+                SymbolType.VARIABLE,
+                expr_type,
+                ctx.start.line,
+                ctx.start.column
+            ))
+            # print(f"Added property '{property_name}' to class '{self.current_class.name}' with type {expr_type}")
+            return expr_type
+
         if ctx.IDENTIFIER():
             var_name = ctx.IDENTIFIER().getText()
             symbol = self.symbol_table.lookup(var_name)
@@ -646,4 +674,4 @@ def compiler(code):
         return tree_str, errors, table
     except Exception as e:
         print("Error compiling code", e)
-        return None, [str(e)]
+        return None, [str(e)], None
