@@ -41,8 +41,8 @@ class Symbol:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "symbol_type": self.symbol_type.name,
-            "data_type": self.data_type.name,
+            "symbol_type": self.symbol_type.name if self.symbol_type else None,
+            "data_type": self.data_type.name if self.data_type else None,
             "line": self.line,
             "column": self.column,
             "value": str(self.value) if self.value is not None else None,

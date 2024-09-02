@@ -655,67 +655,52 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitCall(self, ctx: CompiscriptParser.CallContext):
         result = self.visit(ctx.primary())
-        for i in range(1, len(ctx.children) - 1, 2):
-            print("Primary Text: ", ctx.primary().getText())
+        
+        for i in range(1, len(ctx.children)):
             child = ctx.getChild(i)
-
-            # Function call or method call
-            if child.getText() == "(":
-                primary = ctx.primary()
-                is_super_call = False
-                function_name = primary.getText()
-
-                # Check if it's a method call on super
-                if isinstance(primary, CompiscriptParser.PrimaryContext) and primary.getChildCount() > 1:
-                    if primary.getChild(0).getText() == "super" and primary.getChild(1).getText() == ".":
-                        is_super_call = True
-                        function_name = primary.getChild(2).getText()
-
+            
+            if isinstance(child, CompiscriptParser.PrimaryContext):
+                continue
+            
+            if child.getText() == ".":
+                # Method or property access
+                if i + 1 < len(ctx.children):
+                    member_name = ctx.getChild(i + 1).getText()
+                    result = self.handle_member_access(result, member_name, ctx)
+                i += 1  # Skip the identifier we just processed
+            
+            elif child.getText() == "(":
+                # Function or method call
                 arguments = []
                 if i + 1 < len(ctx.children) and isinstance(ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext):
                     args_ctx = ctx.getChild(i + 1)
                     arguments = [self.visit(arg) for arg in args_ctx.expression()]
-
-                # Handle super call
-                if is_super_call:
-                    result = self.handle_super_call(function_name, arguments, ctx)
-                # Handle method call on an object
-                elif result == DataType.OBJECT:
-                    result = self.handle_method_call(primary.getText(), function_name, arguments, ctx)
-                # Handle regular function call
+                
+                # Pass the object and method name for method calls
+                if isinstance(result, tuple) and result[0] == "method":
+                    result = self.handle_call(result[1], result[2], arguments, ctx)
                 else:
-                    result = self.handle_function_call(function_name, arguments, ctx)
-
-            # Property access
-            elif child.getText() == ".":
-                property_name = ctx.getChild(i + 1).getText()
-                is_method_call = i + 2 < len(ctx.children) and ctx.getChild(i + 2).getText() == "("
-
-                if result != DataType.OBJECT:
-                    self.report_error("Property access is only allowed on objects", ctx)
-                    return DataType.ANY
-
-                # Accessing a field of the current class (this.property)
-                if ctx.primary().getText() == "this":
-                    result = self.handle_this_access(property_name, is_method_call, ctx)
-                # Accessing a field of a superclass (super.property)
-                elif ctx.primary().getText() == "super":
-                    result = self.handle_super_access(property_name, ctx)
-                # Accessing a field of a variable (variable.property)
-                else:
-                    result = self.handle_object_property_access(ctx.primary().getText(), property_name, ctx)
-
-            # Array indexing
+                    result = self.handle_call(result, None, arguments, ctx)
+                i += 1  # Skip the arguments we just processed
+            
             elif child.getText() == "[":
-                result = self.handle_array_indexing(result, ctx.getChild(i + 1), ctx)
-
-        # Anonymous function
-        if ctx.funAnon():
-            return self.visit(ctx.funAnon())
+                # Array indexing
+                if i + 1 < len(ctx.children):
+                    index_expr = ctx.getChild(i + 1)
+                    result = self.handle_array_indexing(result, index_expr, ctx)
+                i += 1  # Skip the expression we just processed
 
         return result
 
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
+        if ctx.IDENTIFIER():
+            symbol = self.symbol_table.lookup(ctx.IDENTIFIER().getText())
+            if symbol is None:
+                self.report_error(f"Undefined identifier '{ctx.IDENTIFIER().getText()}'", ctx)
+                return DataType.ANY
+            if isinstance(symbol, ClassSymbol):
+                return symbol
+            return symbol.data_type
         if ctx.NUMBER():
             return DataType.FLOAT if "." in ctx.NUMBER().getText() else DataType.INT
         elif ctx.STRING():
@@ -925,6 +910,54 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 self.report_error(f"Argument {i+1} type mismatch. Expected {param.data_type}, got {arg}", ctx)
                 return False
         return True
+    
+    def handle_member_access(self, object_type, member_name, ctx):
+        if isinstance(object_type, ClassSymbol):
+            # Accessing a static member of a class
+            member = object_type.get_method(member_name) or object_type.get_field(member_name)
+            if not member:
+                self.report_error(f"'{member_name}' is not a member of class '{object_type.name}'", ctx)
+                return DataType.ANY
+            return member.data_type
+        elif object_type == DataType.OBJECT:
+            # We're accessing a member of an instance, return a tuple to indicate it's a method call
+            return ("method", object_type, member_name)
+        else:
+            self.report_error(f"Cannot access member '{member_name}' on non-object type", ctx)
+            return DataType.ANY
+
+    def handle_call(self, callable_type, method_name, arguments, ctx):
+        if isinstance(callable_type, FunctionSymbol):
+            # Regular function call
+            if not self.validate_arguments(callable_type, arguments, ctx):
+                return DataType.ANY
+            return callable_type.data_type
+        elif isinstance(callable_type, ClassSymbol):
+            # Constructor call
+            init_method = callable_type.get_method('init')
+            if init_method:
+                if not self.validate_arguments(init_method, arguments, ctx):
+                    return DataType.ANY
+            return DataType.OBJECT
+        elif callable_type == DataType.OBJECT and method_name:
+            # Method call on an object
+            # We can't validate the method or arguments as we don't know the exact class
+            # In a more advanced implementation, you might want to track the exact class type of each variable
+            return DataType.ANY
+        else:
+            self.report_error(f"Cannot call non-callable type", ctx)
+            return DataType.ANY
+
+    def handle_array_indexing(self, array_type, index_expr, ctx):
+        index_type = self.visit(index_expr)
+        if index_type != DataType.INT:
+            self.report_error("Array index must be an integer", ctx)
+            return DataType.ANY
+        if array_type != DataType.ARRAY:
+            self.report_error("Indexing is only allowed on arrays", ctx)
+            return DataType.ANY
+        # For simplicity, we assume all array elements are of type ANY
+        return DataType.ANY
 
 def main(argv):
     if len(argv) != 2:
