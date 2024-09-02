@@ -90,6 +90,9 @@ class ClassSymbol(Symbol):
             }
         )
         return class_dict
+    
+    def get_method(self, method_name: str) -> Optional["FunctionSymbol"]:
+        return self.methods.get(method_name, None)
 
 
 class FunctionSymbol(Symbol):

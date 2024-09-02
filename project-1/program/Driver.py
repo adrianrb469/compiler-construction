@@ -598,14 +598,30 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
-
-        # if the class is not defined, report an error
         class_name = ctx.IDENTIFIER().getText()
-        if not self.symbol_table.lookup(class_name):
+        class_symbol = self.symbol_table.lookup(class_name)
+        
+        if not class_symbol or not isinstance(class_symbol, ClassSymbol):
             self.report_error(f"Class '{class_name}' not defined", ctx)
             return DataType.ANY
 
-        return self.visitChildren(ctx)
+        # Check if the class has an init method
+        init_method = class_symbol.get_method('init')
+        if init_method:
+            # Check if the number of arguments matches the init method's parameters
+            if ctx.arguments():
+                arg_count = len(ctx.arguments().expression())
+                if arg_count != len(init_method.parameters):
+                    self.report_error(f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got {arg_count}", ctx)
+            elif len(init_method.parameters) > 0:
+                self.report_error(f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got 0", ctx)
+
+        # Visit arguments if any
+        if ctx.arguments():
+            self.visit(ctx.arguments())
+
+        print(f"Instantiated class '{class_name}'")
+        return DataType.OBJECT
 
     # Helper functions for call handling
 
@@ -638,207 +654,62 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return True
 
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        # primary ( '.' IDENTIFIER | '[' expression ']' | '(' arguments? ')' )*
         result = self.visit(ctx.primary())
         for i in range(1, len(ctx.children) - 1, 2):
-
             print("Primary Text: ", ctx.primary().getText())
-
             child = ctx.getChild(i)
-            # Function call
+
+            # Function call or method call
             if child.getText() == "(":
                 primary = ctx.primary()
                 is_super_call = False
                 function_name = primary.getText()
 
                 # Check if it's a method call on super
-                if (
-                    isinstance(primary, CompiscriptParser.PrimaryContext)
-                    and primary.getChildCount() > 1
-                ):
-                    if (
-                        primary.getChild(0).getText() == "super"
-                        and primary.getChild(1).getText() == "."
-                    ):
+                if isinstance(primary, CompiscriptParser.PrimaryContext) and primary.getChildCount() > 1:
+                    if primary.getChild(0).getText() == "super" and primary.getChild(1).getText() == ".":
                         is_super_call = True
                         function_name = primary.getChild(2).getText()
 
                 arguments = []
-                if i + 1 < len(ctx.children) and isinstance(
-                    ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext
-                ):
+                if i + 1 < len(ctx.children) and isinstance(ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext):
                     args_ctx = ctx.getChild(i + 1)
-                    # Hopefully this is a list of DataTypes
                     arguments = [self.visit(arg) for arg in args_ctx.expression()]
 
-                function = None
-
+                # Handle super call
                 if is_super_call:
-                    if not self.current_class:
-                        self.report_error(
-                            "Attempt to call 'super' outside of class context", ctx
-                        )
-                        return DataType.ANY
-                    if self.current_class.superclass is None:
-                        self.report_error(
-                            f"Class '{self.current_class.name}' does not have a parent class",
-                            ctx,
-                        )
-                        return DataType.ANY
-
-                    symbol = self.symbol_table.lookup(self.current_class.superclass)
-
-                    if not isinstance(symbol, ClassSymbol):
-                        self.report_error(
-                            f"Superclass '{self.current_class.superclass}' not found",
-                            ctx,
-                        )
-                        return DataType.ANY
-
-                    parent_function = symbol.get_method(function_name)
-
-                    if not parent_function:
-                        self.report_error(
-                            f"Parent class '{self.current_class.superclass}' has no function '{function_name}'",
-                            ctx,
-                        )
-                        return DataType.ANY
-                    function = parent_function
+                    result = self.handle_super_call(function_name, arguments, ctx)
+                # Handle method call on an object
+                elif result == DataType.OBJECT:
+                    result = self.handle_method_call(primary.getText(), function_name, arguments, ctx)
+                # Handle regular function call
                 else:
-                    symbol = self.symbol_table.lookup(function_name)
-                    if symbol is None:
-                        self.report_error(
-                            f"Function '{function_name}' not defined", ctx
-                        )
-                        return DataType.ANY
-                    if not isinstance(symbol, FunctionSymbol):
-                        self.report_error(f"'{function_name}' is not a function", ctx)
-                        return DataType.ANY
-                    function = symbol
+                    result = self.handle_function_call(function_name, arguments, ctx)
 
-                if function is not None:
-
-                    if not self.validate_arguments(function, arguments, ctx):
-                        return DataType.ANY
-                    result = function.data_type
             # Property access
             elif child.getText() == ".":
-
                 property_name = ctx.getChild(i + 1).getText()
-                is_method_call = (
-                    i + 2 < len(ctx.children) and ctx.getChild(i + 2).getText() == "("
-                )
+                is_method_call = i + 2 < len(ctx.children) and ctx.getChild(i + 2).getText() == "("
 
                 if result != DataType.OBJECT:
                     self.report_error("Property access is only allowed on objects", ctx)
                     return DataType.ANY
 
-                # We have three cases:
-                # 1. Accessing a field of the current class (this.property)
-                # 2. Accessing a field of a superclass (super.property)
-                # 3. Accessing a field of a variable (variable.property)
-
-                # case 1
+                # Accessing a field of the current class (this.property)
                 if ctx.primary().getText() == "this":
-
-                    if not self.current_class:
-                        self.report_error("'this' used outside of class context", ctx)
-                        return DataType.ANY
-                    class_symbol = self.current_class
-                    member_name = property_name
-
-                    method = class_symbol.get_method(member_name)
-                    field = class_symbol.get_field(member_name)
-
-                    if method and field:
-                        self.report_error(
-                            f"Ambiguous reference to '{member_name}' in class '{class_symbol.name}': both method and field exist",
-                            ctx,
-                        )
-                        return DataType.ANY
-                    elif method:
-                        if not is_method_call:
-                            self.report_error(
-                                f"'{member_name}' is a method but it's being accessed as a property",
-                                ctx,
-                            )
-                            return DataType.ANY
-
-                        # Handle method call with argument validation
-                        arguments = []
-                        if i + 3 < len(ctx.children) and isinstance(
-                            ctx.getChild(i + 3), CompiscriptParser.ArgumentsContext
-                        ):
-                            args_ctx = ctx.getChild(i + 3)
-                            arguments = [
-                                self.visit(arg) for arg in args_ctx.expression()
-                            ]
-
-                        if not self.validate_arguments(method, arguments, ctx):
-                            return DataType.ANY
-
-                        return method.data_type
-                    elif field:
-                        if is_method_call:
-                            self.report_error(
-                                f"'{member_name}' is a property but it's being called as a method",
-                                ctx,
-                            )
-                            return DataType.ANY
-                        return field.data_type
-                    else:
-                        self.report_error(
-                            f"'{member_name}' is not defined in class '{class_symbol.name}'",
-                            ctx,
-                        )
-                        return DataType.ANY
-
-                # case 2
+                    result = self.handle_this_access(property_name, is_method_call, ctx)
+                # Accessing a field of a superclass (super.property)
                 elif ctx.primary().getText() == "super":
-                    if not self.current_class:
-                        self.report_error("'super' used outside of class context", ctx)
-                        return DataType.ANY
-
-                    if not self.current_class.superclass:
-                        self.report_error(
-                            f"Class '{self.current_class.name}' does not have a parent class",
-                            ctx,
-                        )
-                        return DataType.ANY
-
-                    symbol = self.current_class.superclass.get_field(property_name)
-
-                    if not symbol:
-                        self.report_error(
-                            f"Property '{property_name}' not defined in superclass '{self.current_class.superclass}'",
-                            ctx,
-                        )
-                        return DataType.ANY
-                    result = symbol.data_type
-
-                # case 3
+                    result = self.handle_super_access(property_name, ctx)
+                # Accessing a field of a variable (variable.property)
                 else:
-                    symbol = self.symbol_table.lookup(property_name)
-                    if not symbol:
-                        self.report_error(
-                            f"Variable '{property_name}' not defined", ctx
-                        )
-                        return DataType.ANY
-                    result = symbol.data_type
+                    result = self.handle_object_property_access(ctx.primary().getText(), property_name, ctx)
 
             # Array indexing
             elif child.getText() == "[":
-                index_expr = ctx.getChild(i + 1)
-                index_type = self.visit(index_expr)
-                if index_type != DataType.INT:
-                    self.report_error("Array index must be an integer", ctx)
-                    return DataType.ANY
-                if result != DataType.ARRAY:
-                    self.report_error("Indexing is only allowed on arrays", ctx)
-                    return DataType.ANY
-                # For simplicity, we assume all array elements are of type ANY
-                result = DataType.ANY
+                result = self.handle_array_indexing(result, ctx.getChild(i + 1), ctx)
 
+        # Anonymous function
         if ctx.funAnon():
             return self.visit(ctx.funAnon())
 
@@ -931,7 +802,129 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def getSymbolTable(self):
         return self.symbol_table
+    
+    def handle_super_call(self, function_name, arguments, ctx):
+        if not self.current_class or not self.current_class.superclass:
+            self.report_error("Invalid use of 'super'", ctx)
+            return DataType.ANY
 
+        superclass = self.symbol_table.lookup(self.current_class.superclass)
+        if not isinstance(superclass, ClassSymbol):
+            self.report_error(f"Superclass '{self.current_class.superclass}' not found", ctx)
+            return DataType.ANY
+
+        method = superclass.get_method(function_name)
+        if not method:
+            self.report_error(f"Method '{function_name}' not found in superclass", ctx)
+            return DataType.ANY
+
+        if not self.validate_arguments(method, arguments, ctx):
+            return DataType.ANY
+
+        return method.data_type
+
+    def handle_method_call(self, object_name, method_name, arguments, ctx):
+        object_symbol = self.symbol_table.lookup(object_name)
+        if not isinstance(object_symbol, ClassSymbol):
+            self.report_error(f"'{object_name}' is not an object", ctx)
+            return DataType.ANY
+
+        method = object_symbol.get_method(method_name)
+        if not method:
+            self.report_error(f"Method '{method_name}' not found in class '{object_symbol.name}'", ctx)
+            return DataType.ANY
+
+        if not self.validate_arguments(method, arguments, ctx):
+            return DataType.ANY
+
+        return method.data_type
+
+    def handle_function_call(self, function_name, arguments, ctx):
+        function = self.symbol_table.lookup(function_name)
+        if not isinstance(function, FunctionSymbol):
+            self.report_error(f"'{function_name}' is not a function", ctx)
+            return DataType.ANY
+
+        if not self.validate_arguments(function, arguments, ctx):
+            return DataType.ANY
+
+        return function.data_type
+
+    def handle_this_access(self, property_name, is_method_call, ctx):
+        if not self.current_class:
+            self.report_error("'this' used outside of class context", ctx)
+            return DataType.ANY
+
+        method = self.current_class.get_method(property_name)
+        field = self.current_class.get_field(property_name)
+
+        if method and field:
+            self.report_error(f"Ambiguous reference to '{property_name}' in class '{self.current_class.name}'", ctx)
+            return DataType.ANY
+        elif method:
+            if not is_method_call:
+                self.report_error(f"'{property_name}' is a method but it's being accessed as a property", ctx)
+                return DataType.ANY
+            return method.data_type
+        elif field:
+            if is_method_call:
+                self.report_error(f"'{property_name}' is a property but it's being called as a method", ctx)
+                return DataType.ANY
+            return field.data_type
+        else:
+            self.report_error(f"'{property_name}' is not defined in class '{self.current_class.name}'", ctx)
+            return DataType.ANY
+
+    def handle_super_access(self, property_name, ctx):
+        if not self.current_class or not self.current_class.superclass:
+            self.report_error("Invalid use of 'super'", ctx)
+            return DataType.ANY
+
+        superclass = self.symbol_table.lookup(self.current_class.superclass)
+        if not isinstance(superclass, ClassSymbol):
+            self.report_error(f"Superclass '{self.current_class.superclass}' not found", ctx)
+            return DataType.ANY
+
+        field = superclass.get_field(property_name)
+        if not field:
+            self.report_error(f"Property '{property_name}' not found in superclass", ctx)
+            return DataType.ANY
+
+        return field.data_type
+
+    def handle_object_property_access(self, object_name, property_name, ctx):
+        object_symbol = self.symbol_table.lookup(object_name)
+        if not isinstance(object_symbol, ClassSymbol):
+            self.report_error(f"'{object_name}' is not an object", ctx)
+            return DataType.ANY
+
+        field = object_symbol.get_field(property_name)
+        if not field:
+            self.report_error(f"Property '{property_name}' not found in class '{object_symbol.name}'", ctx)
+            return DataType.ANY
+
+        return field.data_type
+
+    def handle_array_indexing(self, array_type, index_expr, ctx):
+        index_type = self.visit(index_expr)
+        if index_type != DataType.INT:
+            self.report_error("Array index must be an integer", ctx)
+            return DataType.ANY
+        if array_type != DataType.ARRAY:
+            self.report_error("Indexing is only allowed on arrays", ctx)
+            return DataType.ANY
+        # For simplicity, we assume all array elements are of type ANY
+        return DataType.ANY
+
+    def validate_arguments(self, callable_symbol, arguments, ctx):
+        if len(callable_symbol.parameters) != len(arguments):
+            self.report_error(f"Expected {len(callable_symbol.parameters)} arguments, but got {len(arguments)}", ctx)
+            return False
+        for i, (param, arg) in enumerate(zip(callable_symbol.parameters, arguments)):
+            if param.data_type != DataType.ANY and param.data_type != arg:
+                self.report_error(f"Argument {i+1} type mismatch. Expected {param.data_type}, got {arg}", ctx)
+                return False
+        return True
 
 def main(argv):
     if len(argv) != 2:
