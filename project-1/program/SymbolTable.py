@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import json
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List, Set, Union
 
 
 class SymbolType(Enum):
@@ -19,6 +19,18 @@ class DataType(Enum):
     ANY = auto()
     VOID = auto()
     NULL = auto()
+    UNION = auto()
+
+
+class UnionType:
+    def __init__(self, types: Set[DataType]):
+        self.types = types
+
+    def name(self):
+        return f"Union[{', '.join(t.name for t in self.types)}]"
+
+    def __str__(self):
+        return f"Union[{', '.join(t.name for t in self.types)}]"
 
 
 class Symbol:
@@ -41,8 +53,12 @@ class Symbol:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "symbol_type": self.symbol_type.name if self.symbol_type else None,
-            "data_type": self.data_type.name if self.data_type else None,
+            "symbol_type": self.symbol_type.name,
+            "data_type": (
+                self.data_type.name
+                if isinstance(self.data_type, DataType)
+                else str(self.data_type)
+            ),
             "line": self.line,
             "column": self.column,
             "value": str(self.value) if self.value is not None else None,
@@ -90,7 +106,7 @@ class ClassSymbol(Symbol):
             }
         )
         return class_dict
-    
+
     def get_method(self, method_name: str) -> Optional["FunctionSymbol"]:
         return self.methods.get(method_name, None)
 

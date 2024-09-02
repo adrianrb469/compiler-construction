@@ -13,6 +13,7 @@ from .SymbolTable import (
     SymbolTable,
     SymbolType,
     Symbol,
+    UnionType,
 )
 from utils.utils import getDeclType, types_comparable, arithmetic_op
 
@@ -174,6 +175,30 @@ class CompiscriptCompiler(CompiscriptVisitor):
             )
         return None
 
+    def infer_function_return_type(self, ctx):
+        return_types = set()
+
+        def visit_node(node):
+            if isinstance(node, CompiscriptParser.ReturnStmtContext):
+                if node.expression():
+                    return_type = self.visit(node.expression())
+                    if isinstance(return_type, UnionType):
+                        return_types.update(return_type.types)
+                    else:
+                        return_types.add(return_type)
+            if hasattr(node, "getChildren"):
+                for child in node.getChildren():
+                    visit_node(child)
+
+        visit_node(ctx)
+
+        if not return_types:
+            return DataType.VOID
+        elif len(return_types) == 1:
+            return next(iter(return_types))
+        else:
+            return UnionType(return_types)
+
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
 
@@ -181,11 +206,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
             return None
 
-        # TODO: Actually infer the return type from the function body
+        # Infer the return type
+        inferred_return_type = self.infer_function_return_type(ctx.block())
+
         fun_symbol = self.symbol_table.declare_symbol(
             fun_name,
             SymbolType.FUNCTION,
-            DataType.ANY,
+            inferred_return_type,
             ctx.start.line,
             ctx.start.column,
         )
@@ -600,21 +627,27 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
         class_name = ctx.IDENTIFIER().getText()
         class_symbol = self.symbol_table.lookup(class_name)
-        
+
         if not class_symbol or not isinstance(class_symbol, ClassSymbol):
             self.report_error(f"Class '{class_name}' not defined", ctx)
             return DataType.ANY
 
         # Check if the class has an init method
-        init_method = class_symbol.get_method('init')
+        init_method = class_symbol.get_method("init")
         if init_method:
             # Check if the number of arguments matches the init method's parameters
             if ctx.arguments():
                 arg_count = len(ctx.arguments().expression())
                 if arg_count != len(init_method.parameters):
-                    self.report_error(f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got {arg_count}", ctx)
+                    self.report_error(
+                        f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got {arg_count}",
+                        ctx,
+                    )
             elif len(init_method.parameters) > 0:
-                self.report_error(f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got 0", ctx)
+                self.report_error(
+                    f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got 0",
+                    ctx,
+                )
 
         # Visit arguments if any
         if ctx.arguments():
@@ -655,34 +688,36 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitCall(self, ctx: CompiscriptParser.CallContext):
         result = self.visit(ctx.primary())
-        
+
         for i in range(1, len(ctx.children)):
             child = ctx.getChild(i)
-            
+
             if isinstance(child, CompiscriptParser.PrimaryContext):
                 continue
-            
+
             if child.getText() == ".":
                 # Method or property access
                 if i + 1 < len(ctx.children):
                     member_name = ctx.getChild(i + 1).getText()
                     result = self.handle_member_access(result, member_name, ctx)
                 i += 1  # Skip the identifier we just processed
-            
+
             elif child.getText() == "(":
                 # Function or method call
                 arguments = []
-                if i + 1 < len(ctx.children) and isinstance(ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext):
+                if i + 1 < len(ctx.children) and isinstance(
+                    ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext
+                ):
                     args_ctx = ctx.getChild(i + 1)
                     arguments = [self.visit(arg) for arg in args_ctx.expression()]
-                
+
                 # Pass the object and method name for method calls
                 if isinstance(result, tuple) and result[0] == "method":
                     result = self.handle_call(result[1], result[2], arguments, ctx)
                 else:
                     result = self.handle_call(result, None, arguments, ctx)
                 i += 1  # Skip the arguments we just processed
-            
+
             elif child.getText() == "[":
                 # Array indexing
                 if i + 1 < len(ctx.children):
@@ -696,7 +731,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         if ctx.IDENTIFIER():
             symbol = self.symbol_table.lookup(ctx.IDENTIFIER().getText())
             if symbol is None:
-                self.report_error(f"Undefined identifier '{ctx.IDENTIFIER().getText()}'", ctx)
+                self.report_error(
+                    f"Undefined identifier '{ctx.IDENTIFIER().getText()}'", ctx
+                )
                 return DataType.ANY
             if isinstance(symbol, ClassSymbol):
                 return symbol
@@ -710,6 +747,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             if not self.current_class:
                 self.report_error("'super' used outside of class context", ctx)
                 return DataType.ANY
+
             if not self.current_class.superclass:
                 self.report_error(
                     f"Class '{self.current_class.name}' does not have a parent class",
@@ -719,13 +757,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             identifier = ctx.IDENTIFIER().getText()
             superclass_symbol = self.symbol_table.lookup(self.current_class.superclass)
-
-            if not isinstance(superclass_symbol, ClassSymbol):
-                self.report_error(
-                    f"Superclass '{self.current_class.superclass}' not found or not a class",
-                    ctx,
-                )
-                return DataType.ANY
 
             # Check if it's a method or a field
             method = superclass_symbol.get_method(identifier)
@@ -787,7 +818,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def getSymbolTable(self):
         return self.symbol_table
-    
+
     def handle_super_call(self, function_name, arguments, ctx):
         if not self.current_class or not self.current_class.superclass:
             self.report_error("Invalid use of 'super'", ctx)
@@ -795,7 +826,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         superclass = self.symbol_table.lookup(self.current_class.superclass)
         if not isinstance(superclass, ClassSymbol):
-            self.report_error(f"Superclass '{self.current_class.superclass}' not found", ctx)
+            self.report_error(
+                f"Superclass '{self.current_class.superclass}' not found", ctx
+            )
             return DataType.ANY
 
         method = superclass.get_method(function_name)
@@ -816,7 +849,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         method = object_symbol.get_method(method_name)
         if not method:
-            self.report_error(f"Method '{method_name}' not found in class '{object_symbol.name}'", ctx)
+            self.report_error(
+                f"Method '{method_name}' not found in class '{object_symbol.name}'", ctx
+            )
             return DataType.ANY
 
         if not self.validate_arguments(method, arguments, ctx):
@@ -844,20 +879,32 @@ class CompiscriptCompiler(CompiscriptVisitor):
         field = self.current_class.get_field(property_name)
 
         if method and field:
-            self.report_error(f"Ambiguous reference to '{property_name}' in class '{self.current_class.name}'", ctx)
+            self.report_error(
+                f"Ambiguous reference to '{property_name}' in class '{self.current_class.name}'",
+                ctx,
+            )
             return DataType.ANY
         elif method:
             if not is_method_call:
-                self.report_error(f"'{property_name}' is a method but it's being accessed as a property", ctx)
+                self.report_error(
+                    f"'{property_name}' is a method but it's being accessed as a property",
+                    ctx,
+                )
                 return DataType.ANY
             return method.data_type
         elif field:
             if is_method_call:
-                self.report_error(f"'{property_name}' is a property but it's being called as a method", ctx)
+                self.report_error(
+                    f"'{property_name}' is a property but it's being called as a method",
+                    ctx,
+                )
                 return DataType.ANY
             return field.data_type
         else:
-            self.report_error(f"'{property_name}' is not defined in class '{self.current_class.name}'", ctx)
+            self.report_error(
+                f"'{property_name}' is not defined in class '{self.current_class.name}'",
+                ctx,
+            )
             return DataType.ANY
 
     def handle_super_access(self, property_name, ctx):
@@ -867,12 +914,16 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         superclass = self.symbol_table.lookup(self.current_class.superclass)
         if not isinstance(superclass, ClassSymbol):
-            self.report_error(f"Superclass '{self.current_class.superclass}' not found", ctx)
+            self.report_error(
+                f"Superclass '{self.current_class.superclass}' not found", ctx
+            )
             return DataType.ANY
 
         field = superclass.get_field(property_name)
         if not field:
-            self.report_error(f"Property '{property_name}' not found in superclass", ctx)
+            self.report_error(
+                f"Property '{property_name}' not found in superclass", ctx
+            )
             return DataType.ANY
 
         return field.data_type
@@ -885,7 +936,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         field = object_symbol.get_field(property_name)
         if not field:
-            self.report_error(f"Property '{property_name}' not found in class '{object_symbol.name}'", ctx)
+            self.report_error(
+                f"Property '{property_name}' not found in class '{object_symbol.name}'",
+                ctx,
+            )
             return DataType.ANY
 
         return field.data_type
@@ -903,27 +957,40 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def validate_arguments(self, callable_symbol, arguments, ctx):
         if len(callable_symbol.parameters) != len(arguments):
-            self.report_error(f"Expected {len(callable_symbol.parameters)} arguments, but got {len(arguments)}", ctx)
+            self.report_error(
+                f"Expected {len(callable_symbol.parameters)} arguments, but got {len(arguments)}",
+                ctx,
+            )
             return False
         for i, (param, arg) in enumerate(zip(callable_symbol.parameters, arguments)):
             if param.data_type != DataType.ANY and param.data_type != arg:
-                self.report_error(f"Argument {i+1} type mismatch. Expected {param.data_type}, got {arg}", ctx)
+                self.report_error(
+                    f"Argument {i+1} type mismatch. Expected {param.data_type}, got {arg}",
+                    ctx,
+                )
                 return False
         return True
-    
+
     def handle_member_access(self, object_type, member_name, ctx):
         if isinstance(object_type, ClassSymbol):
             # Accessing a static member of a class
-            member = object_type.get_method(member_name) or object_type.get_field(member_name)
+            member = object_type.get_method(member_name) or object_type.get_field(
+                member_name
+            )
             if not member:
-                self.report_error(f"'{member_name}' is not a member of class '{object_type.name}'", ctx)
+                self.report_error(
+                    f"'{member_name}' is not a member of class '{object_type.name}'",
+                    ctx,
+                )
                 return DataType.ANY
             return member.data_type
         elif object_type == DataType.OBJECT:
             # We're accessing a member of an instance, return a tuple to indicate it's a method call
             return ("method", object_type, member_name)
         else:
-            self.report_error(f"Cannot access member '{member_name}' on non-object type", ctx)
+            self.report_error(
+                f"Cannot access member '{member_name}' on non-object type", ctx
+            )
             return DataType.ANY
 
     def handle_call(self, callable_type, method_name, arguments, ctx):
@@ -934,7 +1001,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return callable_type.data_type
         elif isinstance(callable_type, ClassSymbol):
             # Constructor call
-            init_method = callable_type.get_method('init')
+            init_method = callable_type.get_method("init")
             if init_method:
                 if not self.validate_arguments(init_method, arguments, ctx):
                     return DataType.ANY
@@ -958,6 +1025,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return DataType.ANY
         # For simplicity, we assume all array elements are of type ANY
         return DataType.ANY
+
 
 def main(argv):
     if len(argv) != 2:
