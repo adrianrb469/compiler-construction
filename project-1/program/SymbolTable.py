@@ -112,7 +112,14 @@ class ClassSymbol(Symbol):
 
 
 class FunctionSymbol(Symbol):
-    def __init__(self, name: str, return_type: DataType, line: int, column: int):
+    def __init__(
+        self,
+        name: str,
+        return_type: DataType,
+        line: int,
+        column: int,
+        parameters: List[Symbol] = [],
+    ):
         super().__init__(name, SymbolType.FUNCTION, return_type, line, column)
         self.parameters: List[Symbol] = []
 
