@@ -9,7 +9,9 @@ CompiScript is a compiler project that implements a basic programming language.
 
 ## Project Demo 🎥
 
-[![CompiScript Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+https://youtu.be/4A6uMO9N_bY?si=N88NDmuTJpjkNVIW
+
+[![CompiScript Demo](https://img.youtube.com/vi/4A6uMO9N_bY/0.jpg)](https://www.youtube.com/watch?v=4A6uMO9N_bY)
 
 Click the image above to watch our project demo on YouTube.
 
