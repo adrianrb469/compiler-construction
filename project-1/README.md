@@ -233,4 +233,10 @@ var greetingResult = studentInstance.greet(); // return a string, int or boolean
 studentInstance.greet();    // Output: Hello, my name is red
 studentInstance.study();    // Output: Alexander is studying in grade 3
 
+if (studentInstance.favoriteColor == "red" ) {
+    print "You are a red person!"
+} else {
+    print "You are a random color person!"
+}
+
 ```
