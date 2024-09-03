@@ -152,15 +152,6 @@ class CompiscriptListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by CompiscriptParser#init.
-    def enterInit(self, ctx:CompiscriptParser.InitContext):
-        pass
-
-    # Exit a parse tree produced by CompiscriptParser#init.
-    def exitInit(self, ctx:CompiscriptParser.InitContext):
-        pass
-
-
     # Enter a parse tree produced by CompiscriptParser#expression.
     def enterExpression(self, ctx:CompiscriptParser.ExpressionContext):
         pass
@@ -278,15 +269,6 @@ class CompiscriptListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by CompiscriptParser#methods.
-    def enterMethods(self, ctx:CompiscriptParser.MethodsContext):
-        pass
-
-    # Exit a parse tree produced by CompiscriptParser#methods.
-    def exitMethods(self, ctx:CompiscriptParser.MethodsContext):
-        pass
-
-
     # Enter a parse tree produced by CompiscriptParser#function.
     def enterFunction(self, ctx:CompiscriptParser.FunctionContext):
         pass
@@ -311,6 +293,15 @@ class CompiscriptListener(ParseTreeListener):
 
     # Exit a parse tree produced by CompiscriptParser#arguments.
     def exitArguments(self, ctx:CompiscriptParser.ArgumentsContext):
+        pass
+
+
+    # Enter a parse tree produced by CompiscriptParser#functions.
+    def enterFunctions(self, ctx:CompiscriptParser.FunctionsContext):
+        pass
+
+    # Exit a parse tree produced by CompiscriptParser#functions.
+    def exitFunctions(self, ctx:CompiscriptParser.FunctionsContext):
         pass
 
 

@@ -83,11 +83,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
             ctx.start.column,
         )
 
-        # Inheritance
-        extensions = ctx.IDENTIFIER()
         parent_class = None
-        if len(extensions) > 1:
-            parent_class_name = extensions[1].getText()
+
+        # Inheritance
+        if ctx.IDENTIFIER(1):
+            parent_class_name = ctx.IDENTIFIER(1).getText()
             parent_class = self.symbol_table.lookup(parent_class_name)
             if not parent_class:
                 self.report_error(f"Class '{parent_class_name}' not defined", ctx)
@@ -105,27 +105,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_class = new_class
 
         if parent_class:
-            # ! This will copy fields and methods from the parent class
             new_class.inherit(parent_class)
 
-        # We visit the methods manually, to handle the initializer
-        methods = ctx.methods()
-        init_count = 0
-        for method in methods.getChildren():
-            if isinstance(method, CompiscriptParser.InitContext):
-                self.in_init = True
-                self.symbol_table.enter_scope("init")
-                self.visit(method)
-                self.symbol_table.exit_scope()
-                self.in_init = False
-                init_count += 1
-                if init_count > 1:
-                    self.report_error(
-                        f'Multiple initializers found in class "{class_name}"', ctx
-                    )
-                    return None
-            else:
-                self.visit(method)
+        # Visit all functions in the class
+        functions_ctx = ctx.functions()
+        if functions_ctx:
+            for function_ctx in functions_ctx.function():
+                self.visit(function_ctx)
 
         # Exit the class scope
         self.symbol_table.exit_scope()
@@ -133,35 +119,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         return None
 
-    def visitInit(self, ctx: CompiscriptParser.InitContext):
-        # verify that the initializer is in a class context
-        if not self.current_class:
-            self.report_error("Initializer outside of class context", ctx)
-            return None
+    # def visitInit(self, ctx: CompiscriptParser.InitContext):
+    #     # verify that the initializer is in a class context
+    #     if not self.current_class:
+    #         self.report_error("Initializer outside of class context", ctx)
+    #         return None
 
-        fun_symbol = self.symbol_table.declare_symbol(
-            "init",
-            SymbolType.FUNCTION,
-            DataType.VOID,
-            ctx.start.line,
-            ctx.start.column,
-        )
+    #     fun_symbol = self.symbol_table.declare_symbol(
+    #         "init",
+    #         SymbolType.FUNCTION,
+    #         DataType.VOID,
+    #         ctx.start.line,
+    #         ctx.start.column,
+    #     )
 
-        self.current_function = fun_symbol
+    #     self.current_function = fun_symbol
 
-        # Get the initializer name as this.attribute = value
-        self.current_class.methods["init"] = fun_symbol
+    #     # Get the initializer name as this.attribute = value
+    #     self.current_class.methods["init"] = fun_symbol
 
-        self.symbol_table.enter_scope("init")
+    #     self.symbol_table.enter_scope("init")
 
-        if ctx.parameters():
-            print("visiting parameters")
-            self.visit(ctx.parameters())
+    #     if ctx.parameters():
+    #         print("visiting parameters")
+    #         self.visit(ctx.parameters())
 
-        self.visit(ctx.block())
+    #     self.visit(ctx.block())
 
-        self.symbol_table.exit_scope()
-        self.current_function = None
+    #     self.symbol_table.exit_scope()
+    #     self.current_function = None
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visit(ctx.function())
@@ -237,11 +223,12 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
+        is_init = fun_name == "init"
+
         if self.symbol_table.lookup(fun_name, current_scope_only=True):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
             return None
 
-        # Crear el símbolo de función con tipo de retorno ANY inicialmente
         fun_symbol = self.symbol_table.declare_symbol(
             fun_name,
             SymbolType.FUNCTION,
@@ -254,14 +241,17 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_function = fun_symbol
         self.symbol_table.enter_scope(fun_name)
 
-        # Procesar parámetros
+        if is_init:
+            self.in_init = True
+
+        # Process parameters
         if ctx.parameters():
             self.visit(ctx.parameters())
 
-        # Visitar el cuerpo de la función
+        # Visit the function body
         self.visit(ctx.block())
 
-        # Finalizar el tipo de retorno
+        # Finalize the return type
         fun_symbol.finalize_return_type()
 
         self.symbol_table.exit_scope()
@@ -269,6 +259,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         if self.current_class:
             self.current_class.methods[fun_name] = fun_symbol
+
+        if is_init:
+            self.in_init = False
 
         return None
 
@@ -838,6 +831,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                         return DataType.ANY
                     function = parent_function
                 else:
+
                     symbol = self.symbol_table.lookup(function_name)
                     if symbol is None:
                         self.report_error(

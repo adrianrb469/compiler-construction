@@ -89,11 +89,6 @@ class CompiscriptVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by CompiscriptParser#init.
-    def visitInit(self, ctx:CompiscriptParser.InitContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by CompiscriptParser#expression.
     def visitExpression(self, ctx:CompiscriptParser.ExpressionContext):
         return self.visitChildren(ctx)
@@ -159,11 +154,6 @@ class CompiscriptVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
-    # Visit a parse tree produced by CompiscriptParser#methods.
-    def visitMethods(self, ctx:CompiscriptParser.MethodsContext):
-        return self.visitChildren(ctx)
-
-
     # Visit a parse tree produced by CompiscriptParser#function.
     def visitFunction(self, ctx:CompiscriptParser.FunctionContext):
         return self.visitChildren(ctx)
@@ -176,6 +166,11 @@ class CompiscriptVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by CompiscriptParser#arguments.
     def visitArguments(self, ctx:CompiscriptParser.ArgumentsContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by CompiscriptParser#functions.
+    def visitFunctions(self, ctx:CompiscriptParser.FunctionsContext):
         return self.visitChildren(ctx)
 
 
