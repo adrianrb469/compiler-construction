@@ -1,6 +1,6 @@
 # CompiScript 🧑🏻‍💻
 
-CompiScript is a custom programming language and compiler project.
+CompiScript is a compiler project that implements a basic programming language.
 
 ## Team Members 👥
 
