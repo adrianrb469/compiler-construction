@@ -204,7 +204,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.symbol_table.declare_symbol(
                 var_name,
                 SymbolType.VARIABLE,
-                DataType.ANY,
+                DataType.NIL,
                 ctx.start.line,
                 ctx.start.column,
             )
@@ -237,17 +237,15 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         fun_name = ctx.IDENTIFIER().getText()
-
         if self.symbol_table.lookup(fun_name, current_scope_only=True):
             self.report_error(f"Function '{fun_name}' already defined", ctx)
             return None
 
-        return_type = self.infer_function_return_type(ctx.block())
-
+        # Crear el símbolo de función con tipo de retorno ANY inicialmente
         fun_symbol = self.symbol_table.declare_symbol(
             fun_name,
             SymbolType.FUNCTION,
-            return_type,
+            DataType.ANY,
             ctx.start.line,
             ctx.start.column,
         )
@@ -256,11 +254,15 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.current_function = fun_symbol
         self.symbol_table.enter_scope(fun_name)
 
+        # Procesar parámetros
         if ctx.parameters():
-
             self.visit(ctx.parameters())
 
+        # Visitar el cuerpo de la función
         self.visit(ctx.block())
+
+        # Finalizar el tipo de retorno
+        fun_symbol.finalize_return_type()
 
         self.symbol_table.exit_scope()
         self.current_function = None
@@ -341,23 +343,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         if ctx.expression():
             return_type = self.visit(ctx.expression())
-            if self.current_function.data_type == DataType.VOID:
-                self.report_error("Cannot return a value from a void function", ctx)
-            # elif (
-            #     self.current_function.data_type is not DataType.ANY
-            #     and return_type != self.current_function.data_type
-            # ):
-            #     # self.report_error(
-            #     #     f"Return type mismatch. Expected {self.current_function.data_type}, got {return_type}",
-            #     #     ctx,
-            #     # )
-        elif self.current_function.data_type != DataType.VOID:
-            self.report_error(
-                f"Function must return a value of type {self.current_function.data_type}",
-                ctx,
-            )
+            self.current_function.add_return_type(return_type)
+        else:
+            self.current_function.add_return_type(DataType.VOID)
 
-        return None  # Return statements don't have a type themselves
+        return None
 
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
         self.loop_depth += 1
@@ -386,14 +376,53 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
-        # self.symbol_table.enter_scope("block")  # does it need a name?
+        # Check if this block is a standalone block statement
+        is_standalone_block = isinstance(
+            ctx.parentCtx, CompiscriptParser.StatementContext
+        )
+
+        if is_standalone_block:
+            self.symbol_table.enter_scope("block")
+
         for declaration in ctx.declaration():
             self.visit(declaration)
-        # self.symbol_table.exit_scope()
+
+        if is_standalone_block:
+            self.symbol_table.exit_scope()
+
         return None
 
     def visitFunAnon(self, ctx: CompiscriptParser.FunAnonContext):
-        return self.visitChildren(ctx)
+        fun_name = self.generate_anon_function_name()
+
+        # Crear el símbolo de función con tipo de retorno ANY inicialmente
+        fun_symbol = self.symbol_table.declare_symbol(
+            fun_name,
+            SymbolType.FUNCTION,
+            DataType.ANY,
+            ctx.start.line,
+            ctx.start.column,
+        )
+        assert isinstance(fun_symbol, FunctionSymbol)
+
+        previous_function = self.current_function
+        self.current_function = fun_symbol
+        self.symbol_table.enter_scope(fun_name)
+
+        # Procesar parámetros
+        if ctx.parameters():
+            self.visit(ctx.parameters())
+
+        # Visitar el cuerpo de la función
+        self.visit(ctx.block())
+
+        # Finalizar el tipo de retorno
+        fun_symbol.finalize_return_type()
+
+        self.symbol_table.exit_scope()
+        self.current_function = previous_function
+
+        return fun_symbol
 
     def visitExpression(self, ctx: CompiscriptParser.ExpressionContext):
         if ctx.assignment():
@@ -1006,7 +1035,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return DataType.ANY
         elif ctx.IDENTIFIER():
             var_name = ctx.IDENTIFIER().getText()
+            print("Var name: ", var_name)
             symbol = self.symbol_table.lookup(var_name)
+
+            print("Symbol: ", symbol)
             if not symbol:
                 self.report_error(f"!! Variable '{var_name}' not defined", ctx)
                 return DataType.ANY

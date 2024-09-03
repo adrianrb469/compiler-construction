@@ -18,7 +18,7 @@ class DataType(Enum):
     OBJECT = auto()
     ANY = auto()
     VOID = auto()
-    NULL = auto()
+    NIL = auto()
     UNION = auto()
 
 
@@ -122,12 +122,27 @@ class FunctionSymbol(Symbol):
     ):
         super().__init__(name, SymbolType.FUNCTION, return_type, line, column)
         self.parameters: List[Symbol] = []
+        self.return_types: Set[DataType] = set()
+
+    def add_return_type(self, return_type: DataType):
+        self.return_types.add(return_type)
+
+    def finalize_return_type(self):
+        if not self.return_types:
+            self.data_type = DataType.VOID
+        elif len(self.return_types) == 1:
+            self.data_type = next(iter(self.return_types))
+        else:
+            self.data_type = UnionType(self.return_types)
 
     def to_dict(self) -> Dict[str, Any]:
         function_dict = super().to_dict()
         function_dict.update(
             {"parameters": [param.to_dict() for param in self.parameters]}
         )
+        function_dict["return_types"] = [
+            return_type.name for return_type in self.return_types
+        ]
         return function_dict
 
 
@@ -142,6 +157,7 @@ class Scope:
         self.symbols[symbol.name] = symbol
 
     def lookup(self, name: str, current_scope_only: bool = False) -> Optional[Symbol]:
+        print("Symbols:", self.symbols.keys())
         if name in self.symbols:
             return self.symbols[name]
         if not current_scope_only and self.parent:
