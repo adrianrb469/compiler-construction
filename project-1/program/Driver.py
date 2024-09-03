@@ -39,6 +39,17 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.errors: List[str] = []
         self.loop_depth = 0
         self.in_init = False  # New flag to track if we're inside an init method
+        self.anon_function_counter = 0
+
+    def visit(self, tree):
+        if tree is None:
+            print("Error: Attempting to visit None")
+            return DataType.ANY
+        try:
+            return super().visit(tree)
+        except Exception as e:
+            print(f"Error during visit: {e}")
+            return DataType.ANY
 
     def report_error(self, message: str, ctx):
         line = ctx.start.line
@@ -171,6 +182,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     return None
 
                 data_type = expr_result.data_type
+                # data_type = DataType.FUNCTION
             elif isinstance(expr_result, tuple) and expr_result[0] == DataType.OBJECT:
                 data_type, class_name = expr_result
             else:
@@ -183,6 +195,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 ctx.start.line,
                 ctx.start.column,
             )
+
+            if isinstance(expr_result, FunctionSymbol):
+                symbol.value = expr_result
 
             if isinstance(expr_result, tuple) and expr_result[0] == DataType.OBJECT:
                 symbol.attributes["class_name"] = class_name
@@ -263,7 +278,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
         if is_init:
             self.in_init = False
 
-        return None
+        self.symbol_table.exit_scope()
+        self.current_function = None
+
+        if self.current_class:
+            self.current_class.methods[fun_name] = fun_symbol
+
+        return fun_symbol  # or return DataType.FUNCTION
 
     def visitStatement(self, ctx: CompiscriptParser.StatementContext):
         return self.visitChildren(ctx)
@@ -335,8 +356,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return None
 
         if ctx.expression():
-            return_type = self.visit(ctx.expression())
-            self.current_function.add_return_type(return_type)
+            return_value = self.visit(ctx.expression())
+            
+            # Handle returning a function
+            if isinstance(return_value, FunctionSymbol):
+                self.current_function.add_return_type(DataType.FUNCTION)
+            else:
+                self.current_function.add_return_type(return_value)
         else:
             self.current_function.add_return_type(DataType.VOID)
 
@@ -388,34 +414,44 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitFunAnon(self, ctx: CompiscriptParser.FunAnonContext):
         fun_name = self.generate_anon_function_name()
 
-        # Crear el símbolo de función con tipo de retorno ANY inicialmente
+        # Create a new FunctionSymbol for the anonymous function
         fun_symbol = self.symbol_table.declare_symbol(
             fun_name,
             SymbolType.FUNCTION,
-            DataType.ANY,
+            DataType.FUNCTION,
             ctx.start.line,
             ctx.start.column,
         )
         assert isinstance(fun_symbol, FunctionSymbol)
 
-        previous_function = self.current_function
+        # Save the current function and set the anonymous function as the current one
+        outer_function = self.current_function
         self.current_function = fun_symbol
+
+        # Create a new scope for the anonymous function
         self.symbol_table.enter_scope(fun_name)
 
-        # Procesar parámetros
+        # Process parameters
         if ctx.parameters():
             self.visit(ctx.parameters())
 
-        # Visitar el cuerpo de la función
+        # Visit the function body
         self.visit(ctx.block())
 
-        # Finalizar el tipo de retorno
+        # Finalize the return type
         fun_symbol.finalize_return_type()
 
+        # Exit the anonymous function scope
         self.symbol_table.exit_scope()
-        self.current_function = previous_function
+
+        # Restore the outer function as the current one
+        self.current_function = outer_function
 
         return fun_symbol
+    
+    def generate_anon_function_name(self):
+        self.anon_function_counter += 1
+        return f"anon_fun_{self.anon_function_counter}"
 
     def visitExpression(self, ctx: CompiscriptParser.ExpressionContext):
         if ctx.assignment():
@@ -767,11 +803,25 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return True
 
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        result = self.visit(ctx.primary())
-        for i in range(1, len(ctx.children) - 1, 2):
-            print("Primary Text: ", ctx.primary().getText())
+        if ctx is None:
+            print("Error: ctx is None in visitCall")
+            return DataType.ANY
 
+        if ctx.primary() is None:
+            print("Error: ctx.primary() is None in visitCall")
+            return DataType.ANY
+
+        result = self.visit(ctx.primary())
+        if result is None:
+            print(f"Warning: visit(ctx.primary()) returned None for {ctx.primary().getText()}")
+            result = DataType.ANY
+
+        for i in range(1, len(ctx.children) - 1, 2):
             child = ctx.getChild(i)
+            if child is None:
+                print(f"Error: child at index {i} is None in visitCall")
+                continue
+
             if child.getText() == "(":
                 # Function call
                 primary = ctx.primary()
@@ -795,7 +845,12 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     ctx.getChild(i + 1), CompiscriptParser.ArgumentsContext
                 ):
                     args_ctx = ctx.getChild(i + 1)
-                    arguments = [self.visit(arg) for arg in args_ctx.expression()]
+                    for arg in args_ctx.expression():
+                        arg_result = self.visit(arg)
+                        if arg_result is None:
+                            print(f"Warning: visit(arg) returned None for argument {arg.getText()}")
+                            arg_result = DataType.ANY
+                        arguments.append(arg_result)
 
                 function = None
 
@@ -831,26 +886,37 @@ class CompiscriptCompiler(CompiscriptVisitor):
                         return DataType.ANY
                     function = parent_function
                 else:
-
-                    symbol = self.symbol_table.lookup(function_name)
-                    if symbol is None:
-                        self.report_error(
-                            f"Function '{function_name}' not defined", ctx
-                        )
-                        return DataType.ANY
-
-                    if symbol.data_type == DataType.OBJECT:
-                        class_name = symbol.attributes["class_name"]
-                        class_symbol = self.symbol_table.lookup(class_name)
-                        if not isinstance(class_symbol, ClassSymbol):
-                            self.report_error(f"Class '{class_name}' not found", ctx)
+                    if isinstance(result, FunctionSymbol):
+                        # This is a stored function or an anonymous function, we need to call it
+                        function = result
+                    else:
+                        symbol = self.symbol_table.lookup(function_name)
+                        if symbol is None:
+                            self.report_error(
+                                f"Function '{function_name}' not defined", ctx
+                            )
                             return DataType.ANY
-                        symbol = class_symbol.get_method(function_name)
 
-                    elif not isinstance(symbol, FunctionSymbol):
-                        self.report_error(f"'{function_name}' is not a function", ctx)
-                        return DataType.ANY
-                    function = symbol
+                        if symbol.data_type == DataType.OBJECT:
+                            class_name = symbol.attributes["class_name"]
+                            class_symbol = self.symbol_table.lookup(class_name)
+                            if not isinstance(class_symbol, ClassSymbol):
+                                self.report_error(f"Class '{class_name}' not found", ctx)
+                                return DataType.ANY
+                            symbol = class_symbol.get_method(function_name)
+                        elif symbol.data_type == DataType.FUNCTION:
+                            # This is a stored function, we need to call it
+                            if isinstance(symbol.value, FunctionSymbol):
+                                function = symbol.value
+                            else:
+                                self.report_error(f"'{function_name}' is not callable", ctx)
+                                return DataType.ANY
+                        elif not isinstance(symbol, FunctionSymbol):
+                            self.report_error(f"'{function_name}' is not a function", ctx)
+                            return DataType.ANY
+
+                        if function is None:
+                            function = symbol
 
                 if function is not None:
                     if not self.validate_arguments(function, arguments, ctx):
@@ -907,7 +973,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
                             )
                             return DataType.ANY
                     else:
-                        print("Primary Text: ", ctx.primary().getText())
                         instance_symbol = self.symbol_table.lookup(
                             ctx.primary().getText()
                         )
@@ -971,7 +1036,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 result = DataType.ANY
 
         if ctx.funAnon():
-            return self.visit(ctx.funAnon())
+            anon_result = self.visit(ctx.funAnon())
+            if anon_result is None:
+                print("Warning: visit(ctx.funAnon()) returned None")
+                return DataType.ANY
+            return anon_result
 
         return result
 
