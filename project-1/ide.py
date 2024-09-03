@@ -16,7 +16,7 @@ with col1:
     code = st_ace(
         placeholder="",
         theme="twilight",
-        language="python",
+        language="java",
         keybinding="vscode",
         height=700,
         min_lines=35,
