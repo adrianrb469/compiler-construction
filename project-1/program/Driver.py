@@ -556,6 +556,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
             var_name = ctx.IDENTIFIER().getText()
 
             symbol = self.symbol_table.lookup(var_name)
+            
+            # TODO: handle to verify the instanced class properties
+
             if not symbol:
                 self.report_error(f"Variable '{var_name}' not defined", ctx)
                 return DataType.ANY
