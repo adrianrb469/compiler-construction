@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_ace import st_ace
-from program.Driver import compiler
+from program.compiler import compiler
 
 st.set_page_config(layout="wide")
 
@@ -18,7 +18,7 @@ with col1:
         theme="twilight",
         language="java",
         keybinding="vscode",
-        height=700,
+        height=500,
         min_lines=35,
         max_lines=None,
         font_size=14,
@@ -27,20 +27,14 @@ with col1:
     )
 
 with col2:
-    result, errors, table = compiler(code)
+    compiled_code, table, errors = compiler(code)
 
-    if result:
-        st.subheader("Parse Tree")
+    if errors is None:
+        st.subheader("Compiled code")
         with st.container(height=200, border=False):
+            st.code(compiled_code, language="text")
 
-            st.code(result, language="text")
     else:
-        st.markdown(
-            '<div class="output-content">No output</div>', unsafe_allow_html=True
-        )
-
-    if errors:
-
         st.subheader("Errors")
         with st.container(height=500, border=False):
 
@@ -63,5 +57,6 @@ def display_scope(scope_dict):
         display_scope(child_scope)
 
 
-st.title("Symbol Table Visualization")
-st.json(table)
+if errors is None:
+    st.title("Symbol Table")
+    st.json(table)

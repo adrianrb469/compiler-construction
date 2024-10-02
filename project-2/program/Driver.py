@@ -1191,7 +1191,7 @@ if __name__ == "__main__":
     main(sys.argv)
 
 
-def compiler(code):
+def analyzer(code):
     try:
         input_stream = InputStream(code)
         lexer = CompiscriptLexer(input_stream)
