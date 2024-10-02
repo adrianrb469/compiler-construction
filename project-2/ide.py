@@ -4,7 +4,6 @@ from program.compiler import compiler
 
 st.set_page_config(layout="wide")
 
-
 # Your Streamlit app code
 st.title("Compiscript")
 
@@ -42,20 +41,6 @@ with col2:
                 st.error(error)
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-
-def display_scope(scope_dict):
-    st.write(f"Scope: {scope_dict['name']}")
-    for symbol_name, symbol_info in scope_dict["symbols"].items():
-        st.write(f"  Symbol: {symbol_name}")
-        st.write(f"    Type: {symbol_info['symbol_type']}")
-        st.write(f"    Data Type: {symbol_info['data_type']}")
-        # Add more details as needed
-
-    for child_scope in scope_dict["children"]:
-        st.write("Child Scope:")
-        display_scope(child_scope)
-
 
 if errors is None:
     st.title("Symbol Table")
