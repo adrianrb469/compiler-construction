@@ -1,4 +1,4 @@
-// Generated from /Users/adrian/compiler-construction/project-1/program/Compiscript.g4 by ANTLR 4.13.1
+// Generated from /Users/adrian/compiler-construction/project-2/program/Compiscript.g4 by ANTLR 4.13.1
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -83,6 +83,30 @@ public class CompiscriptBaseListener implements CompiscriptListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitStatement(CompiscriptParser.StatementContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterBreakStmt(CompiscriptParser.BreakStmtContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitBreakStmt(CompiscriptParser.BreakStmtContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterContinueStmt(CompiscriptParser.ContinueStmtContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitContinueStmt(CompiscriptParser.ContinueStmtContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -371,6 +395,18 @@ public class CompiscriptBaseListener implements CompiscriptListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitArguments(CompiscriptParser.ArgumentsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterFunctions(CompiscriptParser.FunctionsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFunctions(CompiscriptParser.FunctionsContext ctx) { }
 
 	/**
 	 * {@inheritDoc}

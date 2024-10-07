@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_ace import st_ace
-from program.compiler import compiler
+from program.compiler import compile
 
 st.set_page_config(layout="wide")
 
@@ -26,12 +26,12 @@ with col1:
     )
 
 with col2:
-    compiled_code, table, errors = compiler(code)
+    tac, table, errors = compile(code)
 
     if errors is None:
         st.subheader("Compiled code")
         with st.container(height=200, border=False):
-            st.code(compiled_code, language="text")
+            st.code(tac, language="text")
 
     else:
         st.subheader("Errors")

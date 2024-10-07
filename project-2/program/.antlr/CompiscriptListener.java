@@ -1,4 +1,4 @@
-// Generated from /Users/adrian/compiler-construction/project-1/program/Compiscript.g4 by ANTLR 4.13.1
+// Generated from /Users/adrian/compiler-construction/project-2/program/Compiscript.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -66,6 +66,26 @@ public interface CompiscriptListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitStatement(CompiscriptParser.StatementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link CompiscriptParser#breakStmt}.
+	 * @param ctx the parse tree
+	 */
+	void enterBreakStmt(CompiscriptParser.BreakStmtContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link CompiscriptParser#breakStmt}.
+	 * @param ctx the parse tree
+	 */
+	void exitBreakStmt(CompiscriptParser.BreakStmtContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link CompiscriptParser#continueStmt}.
+	 * @param ctx the parse tree
+	 */
+	void enterContinueStmt(CompiscriptParser.ContinueStmtContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link CompiscriptParser#continueStmt}.
+	 * @param ctx the parse tree
+	 */
+	void exitContinueStmt(CompiscriptParser.ContinueStmtContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link CompiscriptParser#exprStmt}.
 	 * @param ctx the parse tree
@@ -306,4 +326,14 @@ public interface CompiscriptListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitArguments(CompiscriptParser.ArgumentsContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link CompiscriptParser#functions}.
+	 * @param ctx the parse tree
+	 */
+	void enterFunctions(CompiscriptParser.FunctionsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link CompiscriptParser#functions}.
+	 * @param ctx the parse tree
+	 */
+	void exitFunctions(CompiscriptParser.FunctionsContext ctx);
 }
