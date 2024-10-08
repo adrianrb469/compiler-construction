@@ -54,7 +54,26 @@ streamlit run ide.py
 
 ## Examples 💥
 
-### Var declaration
+### Arithmetic operations
+
+```
+var x = 5 - 4 * 8;
+var y = x + 6 / 2;
+var z = x * y + 7;
+```
+
+### If statements
+
+```
+var x = 10;
+if (x > 5) {
+    x = x - 1;
+} else {
+    x = x + 1;
+}
+```
+
+### While statement
 
 ```
 var x = 0;
@@ -64,4 +83,3 @@ while (x<5) {
     var y = 6;
 }
 ```
-
