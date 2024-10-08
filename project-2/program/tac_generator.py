@@ -131,6 +131,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
         # generate the while label for return to the start of the loop
         while_label = self.code_generator.new_label()
+        # generate the break label for breaking out of the loop
         break_label = self.code_generator.new_label()
         self.code_generator.emit(Operation.LABEL, result=while_label)
         # get the expression type by visiting the expression
