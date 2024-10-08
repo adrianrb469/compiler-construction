@@ -1,6 +1,6 @@
-# CompiScript 🧑🏻‍💻
+# Three Address Code for CompiScript 🧑🏻‍💻
 
-CompiScript is a compiler project that implements a basic programming language.
+This project consists on translate CompiScript code to Three Address Code. The purpose is to generate intermediate code mips assembly.
 
 ## Team Members 👥
 
@@ -25,7 +25,7 @@ pip install streamlit
 
 ```
 
-## Running CompiScript IDE 🏃🏻‍♂️
+## Running CompiScript IDE 🛠️
 
 To run the CompiScript IDE, use the following command:
 
@@ -37,208 +37,74 @@ streamlit run ide.py
 
 ## Features 🚀
 
-#### Sistema de Tipos
-- Verificacion de tipos en operaciones aritmeticas y logicas.
-- Control de tipos en asignaciones y declaraciones de variables.
-- Compatibilidad de tipos en expresiones de comparacion.
+#### Arithmetic operations
+- Addition
+- Substraction
+- Multiplication
+- Division
 
-#### Manejo de  Ambito
-- Correcta resolucion de nombres de variables y funciones segun el ambito.
-- Deteccion de variables no declaradas.
-- Control de acceso a variables globales y locales.
+#### If, else if, else statements
+- Supports if statements
+- Supports if & else if statements
+- Supports if, else if & else statements
 
-#### Funciones y Procedimientos
-- Verificacion de la cantidad y tipo de argumentos en llamadas a funciones.
-- Validacion del tipo de retorno en funciones.
+#### Loops
+- While statements
+- For statements
 
-#### Control de Flujo
-- Asegurar que las condiciones de los ciclos y estructuras condicionales sean de tipo booleano
+## Examples 💥
 
-## Examples 💣
-
-### Var declaration
+### Arithmetic operations
 
 ```
-var myString = "string";
-var myBool = true;
-var myInt = 1;
+var x = 5 - 4 * 8;
+var y = x + 6 / 2;
+var z = x * y + 7;
 ```
 
-### Function declarations
+### If statement
+
 ```
-fun sumator(a, b) {
-    var result = a + b;
-    return result;
+var x = 10;
+if (x > 5) {
+    x = x - 1;
 }
 ```
 
-### Class declaration
+### If else statement
+
 ```
-class Person {
-  init(name, age) {
-    this.name = name;
-    this.age = age;
-    this.favoriteColor = "red";
-  }
-
-  greet() {
-    var message = "Hello, my name is " + this.favoriteColor;
-    return message;
-  }
-
-}
-```
-
-### Class inheritance
-```
-class Person {
-  init(name, age) {
-    this.name = name;
-    this.age = age;
-    this.favoriteColor = "red";
-  }
-
-  greet() {
-    print "Hello world! my name is" + this.name;
-  }
-
-}
-
-class Student extends Person {
-  init(name, age, grade) { 
-    super.init(name, age);
-    this.grade = grade;
-  } 
-
-  study() {
-    print "Im studying! Im " + super.age + " years old";
-  }
-
-}
-```
-
-### If, if else, else, for & while
-```
-var x = 0; 
-var y = 2;
-var z = 0;
-var w = "lol";
-
-if ((x > 10 and y < 20) or (z == 0 and w != "null")){
-    print "Complex condition met!";
-
-    if (x % 2 == 0 and y % 2 != 0) {
-        print "x is even and y is odd";
-    } else if (x % 2 != 0 and y % 2 == 0) {
-        print "x is odd and y is even";
-    } else {
-        print "x and y are either both odd or both even";
-    }
-
-    while (x > 0 and y > 0) {
-        x = x - 1;
-        y = y - 1;
-        if (x == y) {
-            print "x and y are equal";
-            break;
-        }
-    }
+var x = 10;
+if (x > 5) {
+    x = x - 1;
 } else {
-    print "Complex condition not met";
+    x = x + 1;
 }
 ```
 
-### Manage of global and local states
+### If, else if, else statement
 ```
-var a = 1;
-
-fun sumator() {
-    var b = 10;
-    var result = a + b;
-}
-```
-
-### Non declare variables
-```
-myString = "string";
-myBool = true;
-myInt = 1;
-var a = b + 1;
-```
-
-### Anonymous Functions
-
-CompiScript supports anonymous functions and closures. Here's an example:
-
-```
-fun sumator(a) { 
-    return fun(b) { 
-        return a + b; 
-    }; 
-}
-
-var add = sumator(5); 
-var a = add(10); 
-var b = add(20);
-```
-
-### Complex example
-```
-class Person {
-  init(name, age) {
-    this.name = name;
-    this.age = age;
-    this.favoriteColor = "red";
-  }
-
-  greet() {
-    var message = "Hello, my name is " + this.favoriteColor;
-    return message;
-  }
-
-}
-
-class Student extends Person {
-  init(name, age, grade) { 
-    super.init(name, age);
-    this.grade = grade;
-  } 
-
-  performAction() { // UNION return type: string, int or boolean
-    if (super.age > 18) {
-        return "You are a not a child."
-    } else {
-        return 0;
-    }
-    return true;
-  }
-
-  study() {
-    var nameVariable = this.name;
-    var actionResult = this.performAction() // string, int or boolean
-    var parentAge = super.age; 
-    var parentGreeting = super.greet()
-    print this.name + " is studying in grade " + this.grade + ".";
-  }
-
-} 
-
-var name = "Alexander";
-
-// class instances
-var personInstance = new Person(name, 20);
-var studentInstance = new Student(name, 20, 3);
-
-// accesing to class attributes & methods
-var grade = studentInstance.name;
-var greetingResult = studentInstance.greet(); // return a string, int or boolean.
-studentInstance.greet();    // Output: Hello, my name is red
-studentInstance.study();    // Output: Alexander is studying in grade 3
-
-if (studentInstance.favoriteColor == "red" ) {
-    print "You are a red person!"
+var x = 10;
+if (x > 5) {
+    x = x - 1;
+} else if (x == 5) {
+    x = x + 5;  
+} else if (x == 4) {
+    x = x + 4;  
+} else if (x == 3) {
+    x = x + 3;  
 } else {
-    print "You are a random color person!"
+    x = x + 1;
 }
+```
 
+### While statement
+
+```
+var x = 0;
+
+while (x<5) {
+    print "Hola mundo!";
+    var y = 6;
+}
 ```
