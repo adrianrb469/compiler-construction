@@ -129,7 +129,21 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
-        return self.visitChildren(ctx)
+        # generate the while label for return to the start of the loop
+        while_label = self.code_generator.new_label()
+        break_label = self.code_generator.new_label()
+        self.code_generator.emit(Operation.LABEL, result=while_label)
+        # get the expression type by visiting the expression
+        condition = self.visit(ctx.expression())
+        # generate the if_false instruction to break out of the loop
+        self.code_generator.emit(Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label)
+        # visit the block of code
+        self.visit(ctx.statement())
+        # emit the goto instruction to return to the start of the loop
+        self.code_generator.emit(Operation.GOTO, result=while_label)
+        # emit the label for the break
+        self.code_generator.emit(Operation.LABEL, result=break_label)
+        return None
 
     def visitBreakStmt(self, ctx: CompiscriptParser.BreakStmtContext):
         return self.visitChildren(ctx)
