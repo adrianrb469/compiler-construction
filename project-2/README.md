@@ -108,3 +108,38 @@ while (x<5) {
     var y = 6;
 }
 ```
+
+### For statements
+
+```
+for(var x = 0; x < 10; x++) {
+    print "Hello world!";
+}
+```
+
+```
+for(var x = 0; x < 10; x--) {
+    print "Hello world!";
+}
+```
+
+```
+for(var x = 0; x < 10; x += 3) {
+    print "Hello world!";
+}
+```
+
+```
+for(var x = 0; x < 10; x -=21) {
+    print "Hello world!";
+}
+```
+
+```
+for(var x = 0; x < 10; x++) {
+    print "Hello world!";
+    for(var y = 0; y < 10; y += 2) {
+        print "Hello world nested!";
+    }
+}
+```
