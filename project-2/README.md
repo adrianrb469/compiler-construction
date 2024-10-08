@@ -43,10 +43,10 @@ streamlit run ide.py
 - Multiplication
 - Division
 
-#### If, if else, else statements
+#### If, else if, else statements
 - Supports if statements
-- Supports if & if else statements
-- Supports if, if else & else statements
+- Supports if & else if statements
+- Supports if, else if & else statements
 
 #### Loops
 - While statements
@@ -62,12 +62,37 @@ var y = x + 6 / 2;
 var z = x * y + 7;
 ```
 
-### If statements
+### If statement
 
 ```
 var x = 10;
 if (x > 5) {
     x = x - 1;
+}
+```
+
+### If else statement
+
+```
+var x = 10;
+if (x > 5) {
+    x = x - 1;
+} else {
+    x = x + 1;
+}
+```
+
+### If, else if, else statement
+```
+var x = 10;
+if (x > 5) {
+    x = x - 1;
+} else if (x == 5) {
+    x = x + 5;  
+} else if (x == 4) {
+    x = x + 4;  
+} else if (x == 3) {
+    x = x + 3;  
 } else {
     x = x + 1;
 }
