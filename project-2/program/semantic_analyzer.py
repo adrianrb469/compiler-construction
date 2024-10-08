@@ -674,10 +674,12 @@ class CompiscriptCompiler(CompiscriptVisitor):
             result = arithmetic_op(left, op, right)
 
             if result is None:
-                self.report_error(
-                    f"Cannot perform operation {op} on {left.name} and {right.name}",
-                    ctx,
-                )
+                # if the operation is + or - it means is a ++ or -- operation, so not report error
+                if op != "+" and op != "-":
+                    self.report_error(
+                        f"Cannot perform operation {op} on {left.name} and {right.name}",
+                        ctx,
+                    )
                 return DataType.ANY
 
             left = result
@@ -718,7 +720,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return self.visit(ctx.call())
 
         elif op == "-":
-            if operand not in [DataType.INT, DataType.FLOAT]:
+            # TODO: Handle unary negation when operator '--' is used in for loops
+            if operand not in [DataType.INT, DataType.FLOAT, DataType.ANY]:
                 self.report_error(
                     f"Invalid type for unary negation. Expected numeric type, got {operand.name}",
                     ctx,

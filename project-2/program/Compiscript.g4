@@ -35,7 +35,7 @@ funAnon: 'fun' '(' parameters? ')' block;
 
 expression: assignment | funAnon;
 
-assignment: (call '.')? IDENTIFIER '=' assignment | logicOr;
+assignment: (call '.')? IDENTIFIER ('+'|'-')? '=' assignment | logicOr | IDENTIFIER ('++' | '--');
 
 logicOr: logicAnd ('or' logicAnd)*;
 logicAnd: equality ('and' equality)*;

@@ -89,7 +89,57 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitForStmt(self, ctx: CompiscriptParser.ForStmtContext):
-        return self.visitChildren(ctx)
+        # evaluate if there is an initialization of varDecl
+        if ctx.varDecl():
+            # evaluate the iniialization of varDecl
+            var_name = self.visit(ctx.varDecl())
+        elif ctx.exprStmt():
+            # evaluate the assignment
+            var_name = self.visit(ctx.exprStmt())
+
+        # generate the for label to return to the start of the loop
+        for_label = self.code_generator.new_label()
+        # generate the break label for breaking out of the loop
+        break_label = self.code_generator.new_label()
+        # emit the for label
+        self.code_generator.emit(Operation.LABEL, result=for_label)
+        # get the expression type by visiting the expression
+        condition = self.visit(ctx.expression(0))
+        # generate the if_false instruction to break out of the loop
+        self.code_generator.emit(Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label)
+        # visit the block of code
+        self.visit(ctx.statement())
+        # evaluate the increment or decrement expression
+        expression = ctx.expression(1).getText()
+        # generate a new temporary variable for the result
+        temp = self.code_generator.new_temp()
+        operation = None
+        number = 0
+        
+        if "+=" in expression:
+            operation = Operation.ADD
+            number = expression.split("+=")[1]
+        elif "-=" in expression:
+            operation = Operation.SUB
+            number = expression.split("-=")[1]
+        elif "++" in expression:
+            operation = Operation.ADD
+            number = 1
+        elif "--" in expression:
+            operation = Operation.SUB
+            number = 1
+
+        # emit increment or decrement instruction
+        self.code_generator.emit(operation, arg1=var_name, arg2=number, result=temp)
+        # assign the result to the variable
+        self.code_generator.emit(Operation.ASSIGN, arg1=temp, result=var_name)
+
+        # emit the goto instruction to return to the start of the loop
+        self.code_generator.emit(Operation.GOTO, result=for_label)
+        # emit the label for the break
+        self.code_generator.emit(Operation.LABEL, result=break_label)
+
+        return None
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
         # Evaluate the condition expression and get its temporary result
