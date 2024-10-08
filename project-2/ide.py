@@ -30,7 +30,7 @@ with col2:
 
     if errors is None:
         st.subheader("Compiled code")
-        with st.container(height=200, border=False):
+        with st.container(height=500, border=False):
             st.code(tac, language="text")
 
     else:

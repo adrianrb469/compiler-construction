@@ -92,7 +92,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
-        return self.visitChildren(ctx)
+        # Evaluate the condition expression and get its temporary result
+        condition = self.visit(ctx.expression())
+
+        # Generate unique labels for else branch and end of if
+        label_else = self.code_generator.new_label()
+        label_end = self.code_generator.new_label()
+
+        # Emit IF_FALSE condition GOTO label_else
+        self.code_generator.emit(
+            Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=label_else
+        )
+
+        # Visit the 'then' statement
+        self.visit(ctx.statement(0))
+
+        # After 'then' block, jump to the end
+        self.code_generator.emit(Operation.GOTO, result=label_end)
+
+        # Define label for 'else' branch
+        self.code_generator.emit(Operation.LABEL, result=label_else)
+
+        # If 'else' branch exists, visit it
+        if ctx.statement(1):
+            self.visit(ctx.statement(1))
+
+        # Define the end label
+        self.code_generator.emit(Operation.LABEL, result=label_end)
+
+        return None
 
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
         return self.visitChildren(ctx)
@@ -144,10 +172,53 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
     def visitEquality(self, ctx: CompiscriptParser.EqualityContext):
-        return self.visitChildren(ctx)
+        if ctx.getChildCount() > 1:
+            left = self.visit(ctx.comparison(0))
+            operator = ctx.getChild(1).getText()
+            right = self.visit(ctx.comparison(1))
+
+            temp = self.code_generator.new_temp()
+
+            if operator == "==":
+                op = Operation.EQ
+            elif operator == "!=":
+                op = Operation.NE
+            else:
+                raise Exception(f"Unknown equality operator: {operator}")
+
+            self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
+
+            return temp
+        else:
+            return self.visit(ctx.comparison(0))
 
     def visitComparison(self, ctx: CompiscriptParser.ComparisonContext):
-        return self.visitChildren(ctx)
+        if ctx.getChildCount() > 1:
+            left = self.visit(ctx.term(0))
+            operator = ctx.getChild(1).getText()
+            right = self.visit(ctx.term(1))
+
+            # Generate a temporary variable for the condition result
+            temp = self.code_generator.new_temp()
+
+            # Map operators to TAC operations
+            if operator == ">":
+                op = Operation.GT
+            elif operator == ">=":
+                op = Operation.GE
+            elif operator == "<":
+                op = Operation.LT
+            elif operator == "<=":
+                op = Operation.LE
+            else:
+                raise Exception(f"Unknown comparison operator: {operator}")
+
+            # Emit the comparison operation
+            self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
+
+            return temp
+        else:
+            return self.visit(ctx.term(0))
 
     def visitTerm(self, ctx: CompiscriptParser.TermContext):
         if ctx.getChildCount() == 1:
