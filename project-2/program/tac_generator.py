@@ -147,7 +147,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         # Generate unique labels for else branch and end of if
         label_else = self.code_generator.new_label()
-        label_end = self.code_generator.new_label()
+
+        # Only create label_end if there's an else block
+        label_end = self.code_generator.new_label() if ctx.statement(1) else None
 
         # Emit IF_FALSE condition GOTO label_else
         self.code_generator.emit(
@@ -157,8 +159,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         # Visit the 'then' statement
         self.visit(ctx.statement(0))
 
-        # After 'then' block, jump to the end
-        self.code_generator.emit(Operation.GOTO, result=label_end)
+        # If there's an else block, emit GOTO to skip over it and define label_end
+        if label_end:
+            self.code_generator.emit(Operation.GOTO, result=label_end)
 
         # Define label for 'else' branch
         self.code_generator.emit(Operation.LABEL, result=label_else)
@@ -167,8 +170,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         if ctx.statement(1):
             self.visit(ctx.statement(1))
 
-        # Define the end label
-        self.code_generator.emit(Operation.LABEL, result=label_end)
+        # Define the end label if it exists
+        if label_end:
+            self.code_generator.emit(Operation.LABEL, result=label_end)
 
         return None
 
