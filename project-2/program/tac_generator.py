@@ -48,15 +48,18 @@ class CompiscriptCompiler(CompiscriptVisitor):
         # After visiting all declarations, return the generated code
         return self.code_generator.get_code()
 
+    # declaration: classDecl | funDecl | varDecl | statement;
     def visitDeclaration(self, ctx: CompiscriptParser.DeclarationContext):
         return self.visitChildren(ctx)
 
+    # classDecl: 'class' IDENTIFIER ('extends' IDENTIFIER)? '{' functions '}';
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
         return self.visitChildren(ctx)
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visit(ctx.function())
 
+    # varDecl: 'var' IDENTIFIER ('=' expression)? ';'
     def visitVarDecl(self, ctx: CompiscriptParser.VarDeclContext):
         var_name = ctx.IDENTIFIER().getText()
         if ctx.expression():
@@ -77,6 +80,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.code_generator.emit(op=Operation.ASSIGN, arg1="0", result=var_name)
         return var_name
 
+    # INDENTIFIER '(' parameters? ')' block
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
         return self.visitChildren(ctx)
 
@@ -106,7 +110,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         # get the expression type by visiting the expression
         condition = self.visit(ctx.expression(0))
         # generate the if_false instruction to break out of the loop
-        self.code_generator.emit(Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label)
+        self.code_generator.emit(
+            Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label
+        )
         # visit the block of code
         self.visit(ctx.statement())
         # evaluate the increment or decrement expression
@@ -115,7 +121,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         temp = self.code_generator.new_temp()
         operation = None
         number = 0
-        
+
         if "+=" in expression:
             operation = Operation.ADD
             number = expression.split("+=")[1]
@@ -179,6 +185,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
         return self.visitChildren(ctx)
 
+    # returnStmt: 'return' expression? ';';
     def visitReturnStmt(self, ctx: CompiscriptParser.ReturnStmtContext):
         return self.visitChildren(ctx)
 
@@ -191,7 +198,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         # get the expression type by visiting the expression
         condition = self.visit(ctx.expression())
         # generate the if_false instruction to break out of the loop
-        self.code_generator.emit(Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label)
+        self.code_generator.emit(
+            Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label
+        )
         # visit the block of code
         self.visit(ctx.statement())
         # emit the goto instruction to return to the start of the loop
@@ -200,18 +209,19 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.code_generator.emit(Operation.LABEL, result=break_label)
         return None
 
+    # breakStmt: 'break' ';'
     def visitBreakStmt(self, ctx: CompiscriptParser.BreakStmtContext):
         return self.visitChildren(ctx)
 
+    # continueStmt: 'continue' ';'
     def visitContinueStmt(self, ctx: CompiscriptParser.ContinueStmtContext):
         return self.visitChildren(ctx)
 
+    # block: '{' declaration* '}'
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
         return self.visitChildren(ctx)
 
-    def visitFunAnon(self, ctx: CompiscriptParser.FunAnonContext):
-        return self.visitChildren(ctx)
-
+    # assignment: (call '.')? IDENTIFIER ('+'|'-')? '=' assignment | logicOr | IDENTIFIER ('++' | '--')
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
         if ctx.IDENTIFIER() is not None:
             # This is an assignment like 'x = ...'
@@ -230,16 +240,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # For now, we treat other cases as expressions
             return self.visit(ctx.logicOr())
 
+    # expression: assignment | funAnon
     def visitExpression(self, ctx: CompiscriptParser.ExpressionContext):
         # An expression can be an assignment or an anonymous function
         return self.visit(ctx.assignment() or ctx.funAnon())
 
+    # logicOr: logicAnd ('or' logicAnd)*
     def visitLogicOr(self, ctx: CompiscriptParser.LogicOrContext):
         return self.visitChildren(ctx)
 
+    # logicAnd: equality ('and' equality)*
     def visitLogicAnd(self, ctx: CompiscriptParser.LogicAndContext):
         return self.visitChildren(ctx)
 
+    # equality: comparison (( '!=' | '==') comparison)*
     def visitEquality(self, ctx: CompiscriptParser.EqualityContext):
         if ctx.getChildCount() > 1:
             left = self.visit(ctx.comparison(0))
@@ -261,6 +275,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         else:
             return self.visit(ctx.comparison(0))
 
+    # comparison: term (( '>' | '>=' | '<' | '<=') term)*
     def visitComparison(self, ctx: CompiscriptParser.ComparisonContext):
         if ctx.getChildCount() > 1:
             left = self.visit(ctx.term(0))
@@ -289,6 +304,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
         else:
             return self.visit(ctx.term(0))
 
+    # term: factor (( '-' | '+') factor)*
     def visitTerm(self, ctx: CompiscriptParser.TermContext):
         if ctx.getChildCount() == 1:
             # Single factor; no operation needed
@@ -315,6 +331,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             )
             return result_temp
 
+    # factor: unary (( '/' | '*' | '%') unary)*
     def visitFactor(self, ctx: CompiscriptParser.FactorContext):
         if ctx.getChildCount() == 1:
             # Single unary expression; no operation needed
@@ -343,19 +360,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
             )
             return result_temp
 
+    # unary: ( '!' | '-') unary | call
     def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
         return self.visitChildren(ctx)
 
-    def visitArray(self, ctx: CompiscriptParser.ArrayContext):
-        return self.visitChildren(ctx)
-
+    # instantiation: 'new' IDENTIFIER '(' arguments? ')'
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
         return self.visitChildren(ctx)
 
+    # call: primary ( '(' arguments? ')' | '.' IDENTIFIER | '[' expression ']' )* | funAnon
     def visitCall(self, ctx: CompiscriptParser.CallContext):
         # Corrected to avoid infinite recursion
         return self.visitChildren(ctx)
 
+    # primary: 'true' | 'false' | 'nil' | 'this' | 'super' '.' IDENTIFIER | NUMBER | STRING | IDENTIFIER | '(' expression ')' | array | instantiation
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
         if ctx.NUMBER() is not None:
             # Handle numeric literals
@@ -376,9 +394,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.code_generator.emit(op=Operation.ASSIGN, arg1=value, result=temp)
             return temp
 
+    #  parameters: IDENTIFIER ( ',' IDENTIFIER)*
     def visitParameters(self, ctx: CompiscriptParser.ParametersContext):
         return self.visitChildren(ctx)
 
+    # arguments: expression ( ',' expression)*
     def visitArguments(self, ctx: CompiscriptParser.ArgumentsContext):
         return self.visitChildren(ctx)
 

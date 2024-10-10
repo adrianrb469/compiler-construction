@@ -1,4 +1,4 @@
-// Generated from /Users/jdgomez/UVG/compilers/compiler-construction/project-2/program/Compiscript.g4 by ANTLR 4.13.1
+// Generated from /Users/adrian/compiler-construction/project-2/program/Compiscript.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
