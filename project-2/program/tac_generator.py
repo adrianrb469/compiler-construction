@@ -279,11 +279,30 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # logicOr: logicAnd ('or' logicAnd)*
     def visitLogicOr(self, ctx: CompiscriptParser.LogicOrContext):
-        return self.visitChildren(ctx)
+        if ctx.logicAnd():
+            left = self.visit(ctx.logicAnd(0))
+            for i in range(1, len(ctx.logicAnd())):
+                right = self.visit(ctx.logicAnd(i))
+                temp = self.code_generator.new_temp()
+                self.code_generator.emit(
+                    Operation.OR, arg1=left, arg2=right, result=temp
+                )
+                left = temp
+            return left
+        return None
 
-    # logicAnd: equality ('and' equality)*
     def visitLogicAnd(self, ctx: CompiscriptParser.LogicAndContext):
-        return self.visitChildren(ctx)
+        if ctx.equality():
+            left = self.visit(ctx.equality(0))
+            for i in range(1, len(ctx.equality())):
+                right = self.visit(ctx.equality(i))
+                temp = self.code_generator.new_temp()
+                self.code_generator.emit(
+                    Operation.AND, arg1=left, arg2=right, result=temp
+                )
+                left = temp
+            return left
+        return None
 
     # equality: comparison (( '!=' | '==') comparison)*
     def visitEquality(self, ctx: CompiscriptParser.EqualityContext):
@@ -408,15 +427,21 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # unary: ( '!' | '-') unary | call
     def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
+        if ctx.call():
+            print("Call:", ctx.call().getText())
+            return self.visit(ctx.call())
+
+        if ctx.getChildCount() == 1:
+            print("Unary:", ctx.getChild(0).getText())
+            return self.visit(ctx.getChild(0))
+
         if ctx.getChildCount() == 2:
-            # There's a unary operator and a unary expression
+            # Handle unary operators like '!' and '-'
             operator = ctx.getChild(0).getText()
             operand = self.visit(ctx.unary())
 
-            # Generate a new temporary variable to store the result
             temp = self.code_generator.new_temp()
 
-            # Map the operator to the corresponding TAC operation
             if operator == "!":
                 op = Operation.NOT
             elif operator == "-":
@@ -424,13 +449,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
             else:
                 raise Exception(f"Unknown unary operator: {operator}")
 
-            # Emit the TAC instruction
             self.code_generator.emit(op=op, arg1=operand, result=temp)
 
             return temp
         else:
-            # No unary operator; simply visit the call expression
-            return self.visit(ctx.call())
+            # Fallback for other cases
+            call_result = self.visit(ctx.call())
+            return call_result
 
     # instantiation: 'new' IDENTIFIER '(' arguments? ')'
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
@@ -438,7 +463,35 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # call: primary ( '(' arguments? ')' | '.' IDENTIFIER | '[' expression ']' )* | funAnon
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        return self.visitChildren(ctx)
+        if ctx.primary() and ctx.getChildCount() == 1:
+            print("Primary:", ctx.primary().getText())
+            return self.visit(ctx.primary())
+
+        for i in range(1, len(ctx.children) - 1, 2):
+            child = ctx.getChild(i)
+            if child.getText() == "(":
+                # Function call
+                function_name = ctx.primary().getText()
+                arguments = []
+
+                if i + 1 < len(ctx.children):
+                    args_ctx = ctx.children[i + 1]
+                    for arg in args_ctx.expression():
+                        arg_result = self.visit(arg)
+                        arguments.append(arg_result)
+
+                # Emit PARAM instructions for each argument
+                for arg in arguments:
+                    self.code_generator.emit(Operation.PARAM, arg1=arg)
+
+                # Emit the CALL instruction
+                temp = self.code_generator.new_temp()
+                self.code_generator.emit(
+                    Operation.CALL, arg1=function_name, result=temp
+                )
+                return temp
+
+        return None
 
     # primary: 'true' | 'false' | 'nil' | 'this' | 'super' '.' IDENTIFIER | NUMBER | STRING | IDENTIFIER | '(' expression ')' | array | instantiation
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
@@ -461,7 +514,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # Handle other literals like 'true', 'false', 'nil'
             temp = self.code_generator.new_temp()
             value = ctx.getText()
-            self.code_generator.emit(op=Operation.ASSIGN, arg1=value, result=temp)
+            self.code_generator.emit(Operation.ASSIGN, arg1=value, result=temp)
             return temp
 
     #  parameters: IDENTIFIER ( ',' IDENTIFIER)*

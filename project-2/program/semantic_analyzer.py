@@ -1146,9 +1146,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 param.getPayload().column,
             )
             if self.current_function:
-                print(
-                    "Adding parameter to current function ", self.current_function.name
-                )
+
                 self.current_function.parameters.append(param_symbol)
         return None
 

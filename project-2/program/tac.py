@@ -75,12 +75,9 @@ class IntermediateCodeGenerator:
         """Emit a TAC instruction as an Instruction instance."""
         instruction = Instruction(op=op, arg1=arg1, arg2=arg2, result=result)
         self.code.append(instruction)
-        print(f"Emitted: {instruction}")
 
     def get_code(self) -> List[Instruction]:
         """Return the list of generated TAC instructions."""
-        for instruction in self.code:
-            print(instruction)
         return self.code
 
     def print_code(self) -> None:
