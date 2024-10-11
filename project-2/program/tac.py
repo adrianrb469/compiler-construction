@@ -23,6 +23,9 @@ class Operation(Enum):
     LE = auto()
     GT = auto()
     GE = auto()
+    PARAM = auto()  # For passing parameters
+    CALL = auto()  # For calling functions
+    RETURN = auto()  # For return statements
 
 
 @dataclass
@@ -33,6 +36,9 @@ class Instruction:
     result: Optional[str] = None
 
     def __str__(self):
+        if self.op == Operation.LABEL:
+            return f"{self.result}:"
+
         parts = [self.op.name]
         if self.arg1 is not None:
             parts.append(str(self.arg1))

@@ -1,7 +1,8 @@
+import inspect
 import sys
 
 sys.path.append("..")
-from typing import List
+from typing import List, Optional
 
 from antlr4 import *
 from utils.utils import arithmetic_op, getDeclType, types_comparable
@@ -25,6 +26,8 @@ from .tac import IntermediateCodeGenerator, Operation
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self) -> None:
         self.code_generator = IntermediateCodeGenerator()
+        self.current_function: Optional[str] = None
+        self.function_params: List[str] = []
 
     def visit(self, tree):
         if tree is None:
@@ -37,7 +40,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
             if hasattr(tree, "start"):
                 line = tree.start.line
                 column = tree.start.column
-                print(f"Error during visit: {e} at {line}:{column}")
+                current_function = inspect.stack()[1].function
+                print(
+                    f"Error during visit in {current_function}: {e} at {line}:{column}"
+                )
             else:
                 print(f"Error during visit: {e}")
             return None
@@ -59,30 +65,47 @@ class CompiscriptCompiler(CompiscriptVisitor):
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visit(ctx.function())
 
+    # INDENTIFIER '(' parameters? ')' block
+    def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
+        function_name = ctx.IDENTIFIER().getText()
+        self.current_function = function_name
+        self.function_params = []
+
+        # Emit the label for the function
+        self.code_generator.emit(Operation.LABEL, result=function_name)
+
+        # If there are parameters, visit them
+        if ctx.parameters():
+            for param in ctx.parameters().IDENTIFIER():
+                param_name = param.getText()
+                self.function_params.append(param_name)
+                # Emit the parameter declaration
+                self.code_generator.emit(Operation.PARAM, result=param_name)
+
+        # Visit the function block
+        self.visit(ctx.block())
+
+        # If there's no return statement, add a default return
+        # self.code_generator.emit(Operation.RETURN)
+
+        self.current_function = None
+
+        return function_name
+
     # varDecl: 'var' IDENTIFIER ('=' expression)? ';'
     def visitVarDecl(self, ctx: CompiscriptParser.VarDeclContext):
         var_name = ctx.IDENTIFIER().getText()
         if ctx.expression():
             # Evaluate the initializer expression
             expr_result = self.visit(ctx.expression())
-            # If the expression is a literal value, assign it directly
-            if isinstance(expr_result, str) and expr_result.isdigit():
-                self.code_generator.emit(
-                    op=Operation.ASSIGN, arg1=expr_result, result=var_name
-                )
-            else:
-                # Assign the result to the variable
-                self.code_generator.emit(
-                    op=Operation.ASSIGN, arg1=expr_result, result=var_name
-                )
+            # Assign the result to the variable
+            self.code_generator.emit(
+                op=Operation.ASSIGN, arg1=expr_result, result=var_name
+            )
         else:
             # No initializer; assign a default value (e.g., 0)
             self.code_generator.emit(op=Operation.ASSIGN, arg1="0", result=var_name)
         return var_name
-
-    # INDENTIFIER '(' parameters? ')' block
-    def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
-        return self.visitChildren(ctx)
 
     def visitStatement(self, ctx: CompiscriptParser.StatementContext):
         return self.visitChildren(ctx)
@@ -183,11 +206,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitPrintStmt(self, ctx: CompiscriptParser.PrintStmtContext):
-        return self.visitChildren(ctx)
+        # Evaluate the expression to be printed
+        expr_temp = self.visit(ctx.expression())
+        # Emit the PRINT instruction
+        self.code_generator.emit(Operation.PRINT, arg1=expr_temp)
+        return None
 
     # returnStmt: 'return' expression? ';';
     def visitReturnStmt(self, ctx: CompiscriptParser.ReturnStmtContext):
-        return self.visitChildren(ctx)
+        if ctx.expression():
+            ret_val = self.visit(ctx.expression())
+            self.code_generator.emit(Operation.RETURN, arg1=ret_val)
+        else:
+            self.code_generator.emit(Operation.RETURN)
+        return None
 
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
         # generate the while label for return to the start of the loop
@@ -227,12 +259,12 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # This is an assignment like 'x = ...'
             var_name = ctx.IDENTIFIER().getText()
             # Evaluate the right-hand side
-            expr_temp = self.visit(
+            expr_result = self.visit(
                 ctx.assignment() if ctx.assignment() else ctx.logicOr()
             )
             # Assign the result to the variable
             self.code_generator.emit(
-                op=Operation.ASSIGN, arg1=expr_temp, result=var_name
+                op=Operation.ASSIGN, arg1=expr_result, result=var_name
             )
             return var_name
         else:
@@ -277,15 +309,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # comparison: term (( '>' | '>=' | '<' | '<=') term)*
     def visitComparison(self, ctx: CompiscriptParser.ComparisonContext):
-        if ctx.getChildCount() > 1:
-            left = self.visit(ctx.term(0))
-            operator = ctx.getChild(1).getText()
-            right = self.visit(ctx.term(1))
+        # Start by visiting the first term
+        left = self.visit(ctx.term(0))
 
-            # Generate a temporary variable for the condition result
+        # Iterate over each comparison operator and the corresponding term
+        for i in range(1, len(ctx.term())):
+            operator = ctx.getChild(
+                2 * i - 1
+            ).getText()  # Operators are at odd positions
+            right = self.visit(ctx.term(i))
+
+            # Generate a new temporary variable to store the result
             temp = self.code_generator.new_temp()
 
-            # Map operators to TAC operations
+            # Map the operator to the corresponding TAC operation
             if operator == ">":
                 op = Operation.GT
             elif operator == ">=":
@@ -297,72 +334,103 @@ class CompiscriptCompiler(CompiscriptVisitor):
             else:
                 raise Exception(f"Unknown comparison operator: {operator}")
 
-            # Emit the comparison operation
+            # Emit the TAC instruction
             self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
 
-            return temp
-        else:
-            return self.visit(ctx.term(0))
+            # The result becomes the left operand for the next comparison if any
+            left = temp
+
+        return left
 
     # term: factor (( '-' | '+') factor)*
     def visitTerm(self, ctx: CompiscriptParser.TermContext):
-        if ctx.getChildCount() == 1:
-            # Single factor; no operation needed
-            return self.visit(ctx.factor(0))
-        else:
-            # Left operand
-            left_temp = self.visit(ctx.factor(0))
-            # Operator ('+' or '-')
-            op = ctx.getChild(1).getText()
-            # Right operand
-            right_temp = self.visit(ctx.factor(1))
-            # Generate a new temporary variable for the result
-            result_temp = self.code_generator.new_temp()
-            # Map the operator to the corresponding operation
-            if op == "+":
-                operation = Operation.ADD
-            elif op == "-":
-                operation = Operation.SUB
+        # Start by visiting the first factor
+        left = self.visit(ctx.factor(0))
+
+        # Iterate over each '+' or '-' operator and the corresponding factor
+        for i in range(1, len(ctx.factor())):
+            operator = ctx.getChild(
+                2 * i - 1
+            ).getText()  # Operators are at odd positions
+            right = self.visit(ctx.factor(i))
+
+            # Generate a new temporary variable to store the result
+            temp = self.code_generator.new_temp()
+
+            # Map the operator to the corresponding TAC operation
+            if operator == "+":
+                op = Operation.ADD
+            elif operator == "-":
+                op = Operation.SUB
             else:
-                raise Exception(f"Unknown operator {op}")
-            # Emit the instruction
-            self.code_generator.emit(
-                op=operation, arg1=left_temp, arg2=right_temp, result=result_temp
-            )
-            return result_temp
+                raise Exception(f"Unknown term operator: {operator}")
+
+            # Emit the TAC instruction
+            self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
+
+            # The result becomes the left operand for the next operation if any
+            left = temp
+
+        return left
 
     # factor: unary (( '/' | '*' | '%') unary)*
     def visitFactor(self, ctx: CompiscriptParser.FactorContext):
-        if ctx.getChildCount() == 1:
-            # Single unary expression; no operation needed
-            return self.visit(ctx.unary(0))
-        else:
-            # Left operand
-            left_temp = self.visit(ctx.unary(0))
-            # Operator ('*', '/', '%')
-            op = ctx.getChild(1).getText()
-            # Right operand
-            right_temp = self.visit(ctx.unary(1))
-            # Generate a new temporary variable for the result
-            result_temp = self.code_generator.new_temp()
-            # Map the operator to the corresponding operation
-            if op == "*":
-                operation = Operation.MUL
-            elif op == "/":
-                operation = Operation.DIV
-            elif op == "%":
-                operation = Operation.MOD  # Ensure MOD is added to the Operation enum
+        # Start by visiting the first unary expression
+        left = self.visit(ctx.unary(0))
+
+        # Iterate over each '/', '*', or '%' operator and the corresponding unary expression
+        for i in range(1, len(ctx.unary())):
+            operator = ctx.getChild(
+                2 * i - 1
+            ).getText()  # Operators are at odd positions
+            right = self.visit(ctx.unary(i))
+
+            # Generate a new temporary variable to store the result
+            temp = self.code_generator.new_temp()
+
+            # Map the operator to the corresponding TAC operation
+            if operator == "*":
+                op = Operation.MUL
+            elif operator == "/":
+                op = Operation.DIV
+            elif operator == "%":
+                op = Operation.MOD
             else:
-                raise Exception(f"Unknown operator {op}")
-            # Emit the instruction
-            self.code_generator.emit(
-                op=operation, arg1=left_temp, arg2=right_temp, result=result_temp
-            )
-            return result_temp
+                raise Exception(f"Unknown factor operator: {operator}")
+
+            # Emit the TAC instruction
+            self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
+
+            # The result becomes the left operand for the next operation if any
+            left = temp
+
+        return left
 
     # unary: ( '!' | '-') unary | call
     def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
-        return self.visitChildren(ctx)
+        if ctx.getChildCount() == 2:
+            # There's a unary operator and a unary expression
+            operator = ctx.getChild(0).getText()
+            operand = self.visit(ctx.unary())
+
+            # Generate a new temporary variable to store the result
+            temp = self.code_generator.new_temp()
+
+            # Map the operator to the corresponding TAC operation
+            if operator == "!":
+                op = Operation.NOT
+            elif operator == "-":
+                op = Operation.NEG
+            else:
+                raise Exception(f"Unknown unary operator: {operator}")
+
+            # Emit the TAC instruction
+            self.code_generator.emit(op=op, arg1=operand, result=temp)
+
+            return temp
+        else:
+            # No unary operator; simply visit the call expression
+            return self.visit(ctx.call())
 
     # instantiation: 'new' IDENTIFIER '(' arguments? ')'
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
@@ -370,7 +438,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # call: primary ( '(' arguments? ')' | '.' IDENTIFIER | '[' expression ']' )* | funAnon
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        # Corrected to avoid infinite recursion
         return self.visitChildren(ctx)
 
     # primary: 'true' | 'false' | 'nil' | 'this' | 'super' '.' IDENTIFIER | NUMBER | STRING | IDENTIFIER | '(' expression ')' | array | instantiation
@@ -382,8 +449,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # Handle string literals
             return ctx.STRING().getText()
         elif ctx.IDENTIFIER() is not None:
-            # Return the variable name directly
-            return ctx.IDENTIFIER().getText()
+            if ctx.getChildCount() > 1 and ctx.getChild(1).getText() == "(":
+                # Handle function calls
+                return self.visit(ctx.call())
+            else:
+                return ctx.IDENTIFIER().getText()
         elif ctx.expression() is not None:
             # Handle expressions within parentheses
             return self.visit(ctx.expression())

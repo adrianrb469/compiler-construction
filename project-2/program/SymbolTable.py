@@ -157,7 +157,6 @@ class Scope:
         self.symbols[symbol.name] = symbol
 
     def lookup(self, name: str, current_scope_only: bool = False) -> Optional[Symbol]:
-        print("Symbols:", self.symbols.keys())
         if name in self.symbols:
             return self.symbols[name]
         if not current_scope_only and self.parent:

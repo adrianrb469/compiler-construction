@@ -232,7 +232,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
         elif len(return_types) == 1:
             return next(iter(return_types))
         else:
-            print(return_types)
             return UnionType(return_types)
 
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
@@ -752,12 +751,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.report_error(f"Class '{class_name}' not defined", ctx)
             return DataType.ANY
 
-        print(f"Class symbol: {class_symbol}")
-
         # Check if the class has an init method
         init_method = class_symbol.get_method("init")
         if init_method:
-            print(f"Found init method for class '{class_name}'")
             # Check if the number of arguments matches the init method's parameters
             if ctx.arguments():
                 arg_count = len(ctx.arguments().expression())
