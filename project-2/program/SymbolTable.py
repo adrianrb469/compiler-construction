@@ -384,13 +384,13 @@ class SymbolTable:
     def get_class_method(self, class_instance_name:str, method: str):
         # look for the class method in the symbol table and return it
         scope = self.current_scope
-        currentClass = scope.symbols.get(class_instance_name)
+        currentClass = scope.lookup(class_instance_name)
 
         if currentClass is None or currentClass.attributes is None:
             return None, None
 
         classIdentifier = currentClass.attributes['class_name']
-        currentClassReference = scope.symbols.get(classIdentifier)
+        currentClassReference = scope.lookup(classIdentifier)
 
         if currentClassReference is None:
             return None, None
@@ -407,13 +407,13 @@ class SymbolTable:
     def get_class_field(self, class_instance_name: str, field: str):
         # look for the class attribute (field) & return it
         scope = self.current_scope
-        currentClass = scope.symbols.get(class_instance_name)
+        currentClass = scope.lookup(class_instance_name)
 
         if currentClass is None or currentClass.attributes is None:
             return None, None
 
         classIdentifier = currentClass.attributes['class_name']
-        currentClassReference = scope.symbols.get(classIdentifier)
+        currentClassReference = scope.lookup(classIdentifier)
 
         if currentClassReference is None:
             return None, None
