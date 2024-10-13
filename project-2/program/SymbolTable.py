@@ -188,12 +188,23 @@ class FunctionSymbol(Symbol):
 
 
 class Scope:
-    def __init__(self, name: str, parent: Optional["Scope"] = None):
+    def __init__(
+        self,
+        name: str,
+        parent: Optional["Scope"] = None,
+        unique_id: Optional[int] = None,
+    ):
         self.name = name
         self.parent = parent
         self.children: List["Scope"] = []
         self.symbols: Dict[str, Symbol] = {}
-        self.current_offset = 0  # Track the current memory offset for the scope
+        self.current_offset = 0
+        self.unique_id = unique_id
+
+    def get_full_scope_name(self) -> str:
+        if self.parent:
+            return f"{self.parent.get_full_scope_name()}.{self.name}"
+        return self.name
 
     def declare(self, symbol: Symbol):
         size = get_memory_size(symbol.data_type)
@@ -224,7 +235,7 @@ class Scope:
         return self.name
 
     def __str__(self) -> str:
-        return f"Scope(name='{self.name}', symbols={list(self.symbols.keys())})"
+        return f"Scope(name='{self.name}', id={self.unique_id}, symbols={list(self.symbols.keys())})"
 
     def __repr__(self) -> str:
         return self.__str__()
@@ -232,6 +243,8 @@ class Scope:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
+            "debug_name": self.get_full_scope_name() + f" ({self.unique_id})",
+            "unique_id": self.unique_id,
             "symbols": {
                 name: symbol.to_dict() for name, symbol in self.symbols.items()
             },
@@ -243,22 +256,64 @@ class SymbolTable:
     def __init__(self):
         self.global_scope = Scope("global")
         self.current_scope = self.global_scope
+        self.scope_counter = 1
+        self.scope_history: List[Scope] = [
+            self.global_scope
+        ]  # This tracks the entering and exiting of scopes.
+        self.id_to_scope: Dict[int, Scope] = {0: self.global_scope}
+        self.current_scope_index = 0
+
+    def get_scope_history(self) -> List[Scope]:
+        return self.scope_history
+
+    def get_scope_by_id(self, scope_id: int) -> Optional[Scope]:
+        return self.id_to_scope.get(scope_id, None)
 
     def reset_scope(self):
         self.current_scope = self.global_scope
 
+    def next_scope(self) -> Optional[Scope]:
+        """Traverse to the next scope in the same order as they were entered."""
+        if self.current_scope_index < len(self.scope_history) - 1:
+            previous_scope = self.current_scope  # Track the current scope before moving
+            self.current_scope_index += 1
+            self.current_scope = self.scope_history[self.current_scope_index]
+
+            print(
+                f"Moving from scope '{previous_scope.name}' (ID {previous_scope.unique_id}) "
+                f"to scope '{self.current_scope.name}' (ID {self.current_scope.unique_id})"
+            )
+
+            return self.current_scope
+        else:
+            print("No more scopes to traverse.")
+            return None
+
     def enter_scope(self, name: str = "") -> Scope:
+        if not name:
+            # Generate a unique name for anonymous block scopes
+            name = f"block_{self.scope_counter}"
         new_scope = Scope(
-            name=name or f"block_{id(new_scope)}", parent=self.current_scope
+            name=name, parent=self.current_scope, unique_id=self.scope_counter
         )
+        self.scope_counter += 1
         self.current_scope.children.append(new_scope)
         self.current_scope = new_scope
+        self.scope_history.append(new_scope)
+        self.id_to_scope[new_scope.unique_id] = new_scope
+        print(f"Entered new scope: {new_scope.name} with ID {new_scope.unique_id}")
         return new_scope
 
     def exit_scope(self) -> Optional[Scope]:
         if self.current_scope.parent:
+            exited_scope = self.current_scope
             self.current_scope = self.current_scope.parent
+
+            self.scope_history.append(self.current_scope)
+
+            print(f"Exited scope: {exited_scope.name} with ID {exited_scope.unique_id}")
             return self.current_scope
+        print("Attempted to exit global scope; operation ignored.")
         return None
 
     def declare_symbol(
@@ -311,6 +366,13 @@ class SymbolTable:
         return {
             "global_scope": self.global_scope.to_dict(),
             "current_scope": self.current_scope.get_full_scope_name(),
+            # Infromation about how scopes were entered and exited, and other
+            # information about the scopes
+            "scope_history": [scope.to_dict() for scope in self.scope_history],
+            "id_to_scope": {
+                scope_id: scope.to_dict()
+                for scope_id, scope in self.id_to_scope.items()
+            },
         }
 
     def print_table(self):

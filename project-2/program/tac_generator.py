@@ -27,7 +27,6 @@ from .tac import IntermediateCodeGenerator, Operation
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self, table: SymbolTable):
         self.table = table
-        print("Got table from semantic analyzer:", table)
         self.code_generator = IntermediateCodeGenerator()
         self.current_class: Optional[str] = None
         self.current_function: Optional[str] = None
@@ -73,6 +72,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # Extract the superclass name if inheritance is used
             superclass = ctx.IDENTIFIER(1).getText() if ctx.IDENTIFIER(1) else None
 
+            self.table.next_scope()
+
             # Set the current class context
             self.current_class = class_name
 
@@ -93,6 +94,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             # Reset the current class context after processing the class
             self.current_class = None
+            self.table.next_scope()
 
             return class_name
         except Exception as e:
@@ -114,6 +116,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 full_function_name = function_name
 
             self.current_function = full_function_name
+            self.table.next_scope()
             self.function_params = []
 
             # Check if this is the 'init' method
@@ -141,6 +144,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.in_init_method = False
             self.current_function = None
             self.function_params = []
+            self.table.next_scope()
 
             return full_function_name
         except Exception as e:
@@ -172,31 +176,39 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitForStmt(self, ctx: CompiscriptParser.ForStmtContext):
-        # evaluate if there is an initialization of varDecl
+        # Move to the next scope for the 'for' loop block (corresponds to enter_scope)
+        self.table.next_scope()
+
+        # Evaluate if there is an initialization of varDecl
         if ctx.varDecl():
-            # evaluate the iniialization of varDecl
+            # Evaluate the initialization of varDecl
             var_name = self.visit(ctx.varDecl())
         elif ctx.exprStmt():
-            # evaluate the assignment
+            # Evaluate the assignment
             var_name = self.visit(ctx.exprStmt())
 
-        # generate the for label to return to the start of the loop
+        # Generate the for label to return to the start of the loop
         for_label = self.code_generator.new_label()
-        # generate the break label for breaking out of the loop
+        # Generate the break label for breaking out of the loop
         break_label = self.code_generator.new_label()
-        # emit the for label
+
+        # Emit the for label
         self.code_generator.emit(Operation.LABEL, result=for_label)
-        # get the expression type by visiting the expression
+
+        # Get the expression type by visiting the condition expression
         condition = self.visit(ctx.expression(0))
-        # generate the if_false instruction to break out of the loop
+
+        # Generate the if_false instruction to break out of the loop
         self.code_generator.emit(
             Operation.IF_FALSE, arg1=condition, arg2="GOTO", result=break_label
         )
-        # visit the block of code
+
+        # Visit the loop body block of code
         self.visit(ctx.statement())
-        # evaluate the increment or decrement expression
+
+        # Evaluate the increment or decrement expression
         expression = ctx.expression(1).getText()
-        # generate a new temporary variable for the result
+        # Generate a new temporary variable for the result
         temp = self.code_generator.new_temp()
         operation = None
         number = 0
@@ -214,19 +226,26 @@ class CompiscriptCompiler(CompiscriptVisitor):
             operation = Operation.SUB
             number = 1
 
-        # emit increment or decrement instruction
+        # Emit increment or decrement instruction
         self.code_generator.emit(operation, arg1=var_name, arg2=number, result=temp)
-        # assign the result to the variable
+        # Assign the result to the variable
         self.code_generator.emit(Operation.ASSIGN, arg1=temp, result=var_name)
 
-        # emit the goto instruction to return to the start of the loop
+        # Emit the goto instruction to return to the start of the loop
         self.code_generator.emit(Operation.GOTO, result=for_label)
-        # emit the label for the break
+
+        # Emit the label for the break
         self.code_generator.emit(Operation.LABEL, result=break_label)
+
+        # Move to the next scope after exiting the loop block (corresponds to exit_scope)
+        self.table.next_scope()
 
         return None
 
     def visitIfStmt(self, ctx: CompiscriptParser.IfStmtContext):
+        # Move to the next scope for the 'if' branch
+        self.table.next_scope()
+
         # Evaluate the condition expression and get its temporary result
         condition = self.visit(ctx.expression())
 
@@ -247,6 +266,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
         # If there's an else block, emit GOTO to skip over it and define label_end
         if label_end:
             self.code_generator.emit(Operation.GOTO, result=label_end)
+
+        # Move to the next scope for the 'else' branch if it exists
+        if ctx.statement(1):
+            self.table.next_scope()
 
         # Define label for 'else' branch
         self.code_generator.emit(Operation.LABEL, result=label_else)
@@ -278,6 +301,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return None
 
     def visitWhileStmt(self, ctx: CompiscriptParser.WhileStmtContext):
+        self.table.next_scope()
+
         # generate the while label for return to the start of the loop
         while_label = self.code_generator.new_label()
         # generate the break label for breaking out of the loop
@@ -295,6 +320,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
         self.code_generator.emit(Operation.GOTO, result=while_label)
         # emit the label for the break
         self.code_generator.emit(Operation.LABEL, result=break_label)
+
+        self.table.next_scope()
         return None
 
     # breakStmt: 'break' ';'
@@ -307,7 +334,21 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # block: '{' declaration* '}'
     def visitBlock(self, ctx: CompiscriptParser.BlockContext):
-        return self.visitChildren(ctx)
+        # Check if this block is a standalone block statement
+        is_standalone_block = isinstance(
+            ctx.parentCtx, CompiscriptParser.StatementContext
+        )
+
+        if is_standalone_block:
+            self.table.next_scope()
+
+        for declaration in ctx.declaration():
+            self.visit(declaration)
+
+        if is_standalone_block:
+            self.table.next_scope()
+
+        return None
 
     # assignment: (call '.')? IDENTIFIER ('+'|'-')? '=' assignment | logicOr | IDENTIFIER ('++' | '--')
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
@@ -318,9 +359,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 and ctx.getChild(0).getText() == "this"
                 and ctx.getChild(1).getText() == "."
             ):
-                print("Child 0:", ctx.getChild(0).getText())
-                print("Child 1:", ctx.getChild(1).getText())
-                print("Child 2:", ctx.getChild(2).getText())
                 var_name = ctx.IDENTIFIER().getText()
                 expr_result = self.visit(
                     ctx.assignment() if ctx.assignment() else ctx.logicOr()
@@ -686,14 +724,13 @@ def generate_tac(code: str, table: SymbolTable) -> List[str]:
 
         print("\033[H\033[J")
 
-        table.reset_scope()  # We will start from the global scope
+        table.reset_scope()
 
         visitor = CompiscriptCompiler(table)
         tac_instructions = visitor.visit(tree)
 
         # Convert the list of instructions to a string representation
         tac_output = "\n".join(str(instr) for instr in tac_instructions)
-
         return tac_output
     except Exception as e:
         return "An error occurred: " + str(e)
