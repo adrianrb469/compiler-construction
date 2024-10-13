@@ -22,6 +22,30 @@ class DataType(Enum):
     UNION = auto()
 
 
+def get_memory_size(data_type: DataType) -> int:
+    """Return the size in bytes of a data type."""
+    match data_type:
+        case DataType.INT:
+            return 4  # 4 bytes for integers
+        case DataType.FLOAT:
+            return 4  # 4 bytes for floats
+        case DataType.BOOLEAN:
+            return 1  # 1 byte for booleans
+        case DataType.STRING:
+            return 8  # 8 bytes for pointers to strings
+        case DataType.ARRAY:
+            return 8  # Assume arrays are referenced by pointers
+        case DataType.OBJECT:
+            return 8  # Assume objects are referenced by pointers
+        case DataType.ANY:
+            return 8  # Treat 'ANY' as a reference type (pointer size, 8 bytes)
+        case DataType.UNION:
+            # A union would need enough memory to store the largest type
+            return max(get_memory_size(t) for t in data_type.types)
+        case _:
+            return 4  # Default to 4 bytes for other types
+
+
 class UnionType:
     def __init__(self, types: Set[DataType]):
         self.types = types
@@ -49,6 +73,8 @@ class Symbol:
         self.column = column
         self.value: Any = None
         self.attributes: Dict[str, Any] = {}
+        self.offset: Optional[int] = None  # Store the memory offset
+        self.size: Optional[int] = None  # Store the memory size in bytes
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -63,6 +89,8 @@ class Symbol:
             "column": self.column,
             "value": str(self.value) if self.value is not None else None,
             "attributes": self.attributes,
+            "offset": self.offset,  # Include offset in the output
+            "size": self.size,  # Include size in the output
         }
 
 
@@ -74,14 +102,26 @@ class ClassSymbol(Symbol):
         self.superclass = superclass
         self.methods: Dict[str, "FunctionSymbol"] = {}
         self.fields: Dict[str, Symbol] = {}
+        self.class_size = 0
+        self.current_field_offset = 0
 
     def inherit(self, parent: "ClassSymbol"):
+        """Inherit fields and methods from a parent class."""
         self.superclass = parent.name
         self.methods = parent.methods.copy()
         self.fields = parent.fields.copy()
+        self.current_field_offset = (
+            parent.class_size
+        )  # Start offsets after the parent’s fields
+        self.class_size = parent.class_size  # Inherit the parent class size
 
     def add_field(self, field: Symbol):
-        self.fields[field.name] = field
+        """Add a field to the class, calculate the memory offset, and update class size."""
+        size = get_memory_size(field.data_type)  # Get the size of the field
+        field.offset = self.current_field_offset  # Set the field's offset
+        self.fields[field.name] = field  # Add the field to the class
+        self.current_field_offset += size  # Update the offset for the next field
+        self.class_size += size  # Update the total size of the class
 
     def get_field(self, field_name: str) -> Optional[Symbol]:
         return self.fields.get(field_name, None)
@@ -103,6 +143,7 @@ class ClassSymbol(Symbol):
                 "fields": {
                     name: field.to_dict() for name, field in self.fields.items()
                 },
+                "class_size": self.class_size,  # Include the total class size
             }
         )
         return class_dict
@@ -152,8 +193,13 @@ class Scope:
         self.parent = parent
         self.children: List["Scope"] = []
         self.symbols: Dict[str, Symbol] = {}
+        self.current_offset = 0  # Track the current memory offset for the scope
 
     def declare(self, symbol: Symbol):
+        size = get_memory_size(symbol.data_type)
+        symbol.offset = self.current_offset
+        symbol.size = size
+        self.current_offset += size
         self.symbols[symbol.name] = symbol
 
     def lookup(self, name: str, current_scope_only: bool = False) -> Optional[Symbol]:

@@ -74,7 +74,7 @@ class Instruction:
             parts.append(str(self.arg2))
         if self.result is not None:
             parts.append(str(self.result))
-        return " ".join(parts)
+        return "    " + " ".join(parts)  # Add indentation for non-label instructions
 
 
 class IntermediateCodeGenerator:

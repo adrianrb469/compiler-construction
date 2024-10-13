@@ -25,7 +25,9 @@ def show_editor(default_code=""):
 def display_compilation_output(tac, errors):
     if errors is None:
         st.subheader("Compiled Three-Address Code")
-        st.code(tac, language="text")
+        print(tac)
+        # Display the formatted TAC code with correct language (text or other)
+        st.code(tac, language="text", line_numbers=True)
     else:
         st.subheader("Compilation Errors")
         st.error("The following errors were found during compilation:")
