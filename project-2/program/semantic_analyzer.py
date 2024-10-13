@@ -1113,12 +1113,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return DataType.ANY
         elif ctx.IDENTIFIER():
             var_name = ctx.IDENTIFIER().getText()
-            # print("Var name: ", var_name)
             symbol = self.symbol_table.lookup(var_name)
 
-            # print("Symbol: ", symbol)
             if not symbol:
-                self.report_error(f"!! Variable '{var_name}' not defined", ctx)
+                self.report_error(f"Variable '{var_name}' not defined", ctx)
                 return DataType.ANY
             return symbol.data_type
         elif ctx.getChild(0).getText() in ["true", "false"]:

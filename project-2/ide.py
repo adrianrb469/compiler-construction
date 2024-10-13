@@ -2,46 +2,69 @@ import streamlit as st
 from streamlit_ace import st_ace
 from program.compiler import compile
 
+# Streamlit configuration
 st.set_page_config(layout="wide")
 
-# Your Streamlit app code
-st.title("Compiscript")
 
-# Create two columns with equal width
-col1, col2 = st.columns(2)
-
-with col1:
-    # Spawn a new Ace editor
-    code = st_ace(
-        placeholder="",
-        theme="twilight",
-        language="java",
+# Helper function to display the editor
+def show_editor(default_code=""):
+    return st_ace(
+        placeholder="Type your Compiscript code here...",
+        theme="dracula",  # Changed theme to 'dracula' for better color contrast
+        language="java",  # Still using 'java' as it’s close to Compiscript
         keybinding="vscode",
         height=500,
         min_lines=35,
-        max_lines=None,
         font_size=14,
         tab_size=4,
         wrap=False,
     )
 
-with col2:
-    tac, table, errors, table_obj = compile(code)
 
+# Helper function to display TAC and errors
+def display_compilation_output(tac, errors):
     if errors is None:
-        st.subheader("Compiled code")
-        with st.container(height=1200, border=False):
-            st.code(tac, language="text")
-
+        st.subheader("Compiled Three-Address Code")
+        st.code(tac, language="text")
     else:
-        st.subheader("Errors")
-        with st.container(height=500, border=False):
+        st.subheader("Compilation Errors")
+        st.error("The following errors were found during compilation:")
+        for error in errors:
+            st.error(f"• {error}")
 
-            for error in errors:
-                st.error(error)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+# App Layout
+st.title("Compiscript IDE")
 
-if errors is None:
-    st.title("Symbol Table")
-    st.json(table)
+# Two-column layout
+col1, col2 = st.columns([1, 1])  # Keeping equal width for editor and output
+
+with col1:
+    st.subheader("Code Editor")
+    code = show_editor()
+
+with col2:
+
+    if code:
+        tac, table, errors, _ = compile(code)
+
+        # Create tabs for the TAC output and Symbol Table
+        tab1, tab2 = st.tabs(["Three-Address Code", "Symbol Table"])
+
+        with tab1:
+            display_compilation_output(tac, errors)
+
+        with tab2:
+            # Display Symbol Table if no errors
+            if errors is None:
+                st.subheader("Symbol Table")
+                st.json(table)
+
+# Footer with some credits or description
+st.markdown(
+    """
+    <hr>
+    <small>Created with Streamlit & Ace Editor</small>
+    """,
+    unsafe_allow_html=True,
+)
