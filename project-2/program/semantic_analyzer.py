@@ -666,10 +666,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     DataType.INT,
                     DataType.FLOAT,
                 ] or right not in [DataType.STRING, DataType.INT, DataType.FLOAT]:
-                    self.report_error(
-                        f"Invalid types for string concatenation: {left.name} and {right.name}",
-                        ctx,
-                    )
+                    # self.report_error(
+                    #     f"Invalid types for string concatenation: {left.name} and {right.name}",
+                    #     ctx,
+                    # )
                     return DataType.ANY
                 return DataType.STRING
 
@@ -830,6 +830,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 print(f"Error: child at index {i} is None in visitCall")
                 continue
 
+            # handle function calls
             if child.getText() == "(":
                 # Function call
                 primary = ctx.primary()

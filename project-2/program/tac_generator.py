@@ -592,27 +592,24 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
         for i in range(1, len(ctx.children) - 1, 2):
             child = ctx.getChild(i)
-            if child.getText() == ".":
-                # Handling property access like 'this.field'
-                property_name = ctx.getChild(i + 1).getText()
 
-                # If the left-hand side is 'this', load the field value
-                if ctx.primary().getText() == "this":
-                    field_temp = self.code_generator.new_temp()
-                    self.code_generator.emit(
-                        Operation.LOAD_FIELD,
-                        arg1=property_name,
-                        arg2="this",
-                        result=field_temp,
-                    )
-                    result = field_temp  # Store the result of the field load
-                    print(
-                        f"Loaded field '{property_name}' from 'this' into {field_temp}"
-                    )
+            if child is None:
+                print(f"Error: child at index {i} is None in visitCall")
+                continue
 
+            # case: object.method()
+            # NOTE: the foor loop catched this char: "("
             elif child.getText() == "(":
                 # Handling method calls like 'this.method()'
-                function_name = ctx.primary().getText()
+                class_instance_name = ctx.primary().getText()
+                method_name = ctx.getChild(i - 1).getText()
+                self.code_generator.get_code()
+
+                class_reference, method = self.table.get_class_method(class_instance_name, method_name)
+
+                # print(f"class: {class_reference} property: {method}")
+
+                temp = self.code_generator.new_temp()
 
                 # Prepare arguments for the method call
                 arguments = []
@@ -627,11 +624,53 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 for arg in arguments:
                     self.code_generator.emit(Operation.PARAM, arg1=arg)
 
+                # if the symbol table has the function_name in the symbols, not print it
+
+
                 # Emit the CALL instruction
+                if class_reference is not None and method is not None:
+                    self.code_generator.emit(
+                        Operation.CALL,
+                        arg1=f"{class_reference.name}.{method_name}",
+                        result=temp
+                    )
+                result = temp
+
+            # case: object.property
+            # NOTE: the foor loop catched this char: "."
+            elif child.getText() == ".":
+                # Handling property access like 'this.field'
+                class_instance_name = ctx.primary().getText()
+                field_name = ctx.getChild(i + 1).getText()
+
+                # print(f"class_instance: {class_instance_name} field_name: {field_name}")
+
+                class_reference, field = self.table.get_class_field(class_instance_name, field_name)
+
+                # print(f"*** class: {vars(class_reference)}\n *** field: {vars(field)}")
+
+                if class_reference is None or field is None:
+                    continue
+
                 temp = self.code_generator.new_temp()
-                self.code_generator.emit(
-                    Operation.CALL, arg1=function_name, result=temp
-                )
+
+                # If the left-hand side is 'this', load the field value
+                if ctx.primary().getText() == "this":
+                    self.code_generator.emit(
+                        Operation.LOAD_FIELD,
+                        arg1=field_name,
+                        arg2="this",
+                        result=temp,
+                    )
+                else:
+                    # load any other field from the class
+                    self.code_generator.emit(
+                        Operation.LOAD_FIELD,
+                        arg1=class_instance_name,
+                        arg2=field_name,
+                        result=temp
+                    )
+
                 result = temp
 
         return result

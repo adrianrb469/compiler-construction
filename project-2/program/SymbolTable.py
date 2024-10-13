@@ -318,3 +318,49 @@ class SymbolTable:
 
     def get_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
+
+    def get_class_method(self, class_instance_name:str, method: str):
+        # look for the class method in the symbol table and return it
+        scope = self.current_scope
+        currentClass = scope.symbols.get(class_instance_name)
+
+        if currentClass is None or currentClass.attributes is None:
+            return None, None
+
+        classIdentifier = currentClass.attributes['class_name']
+        currentClassReference = scope.symbols.get(classIdentifier)
+
+        if currentClassReference is None:
+            return None, None
+
+        if isinstance(currentClassReference, ClassSymbol):
+
+            if currentClassReference.get_method(method) is None:
+                return None, None
+
+            return currentClassReference, currentClassReference.get_method(method)
+
+        return None, None
+
+    def get_class_field(self, class_instance_name: str, field: str):
+        # look for the class attribute (field) & return it
+        scope = self.current_scope
+        currentClass = scope.symbols.get(class_instance_name)
+
+        if currentClass is None or currentClass.attributes is None:
+            return None, None
+
+        classIdentifier = currentClass.attributes['class_name']
+        currentClassReference = scope.symbols.get(classIdentifier)
+
+        if currentClassReference is None:
+            return None, None
+
+        if isinstance(currentClassReference, ClassSymbol):
+
+            if currentClassReference.get_field(field) is None:
+                return None, None
+
+            return currentClassReference, currentClassReference.get_field(field)
+
+        return None, None
