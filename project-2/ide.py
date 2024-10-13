@@ -26,7 +26,7 @@ with col1:
     )
 
 with col2:
-    tac, table, errors = compile(code)
+    tac, table, errors, table_obj = compile(code)
 
     if errors is None:
         st.subheader("Compiled code")

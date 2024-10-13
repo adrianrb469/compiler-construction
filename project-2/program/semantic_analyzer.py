@@ -32,14 +32,17 @@ class ObjectInstance:
 
 
 class CompiscriptCompiler(CompiscriptVisitor):
-    def __init__(self) -> None:
-        self.symbol_table = SymbolTable()
+    def __init__(self):
+        self.symbol_table = None
         self.current_class = None
         self.current_function = None
         self.errors: List[str] = []
         self.loop_depth = 0
         self.in_init = False  # New flag to track if we're inside an init method
         self.anon_function_counter = 0
+
+    def set_symbol_table(self, symbol_table: SymbolTable):
+        self.symbol_table = symbol_table
 
     def visit(self, tree):
         if tree is None:
@@ -674,11 +677,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             if result is None:
                 # if the operation is + or - it means is a ++ or -- operation, so not report error
-                if op != "+" and op != "-":
-                    self.report_error(
-                        f"Cannot perform operation {op} on {left.name} and {right.name}",
-                        ctx,
-                    )
+                # if op != "+" and op != "-":
+                #     self.report_error(
+                #         f"Cannot perform operation {op} on {left.name} and {right.name}",
+                #         ctx,
+                #     )
                 return DataType.ANY
 
             left = result
@@ -698,10 +701,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
             result = arithmetic_op(left, op, right)
 
             if result is None:
-                self.report_error(
-                    f"Cannot perform operation {op} on {left.name} and {right.name}",
-                    ctx,
-                )
+                # self.report_error(
+                #     f"Cannot perform operation {op} on {left.name} and {right.name}",
+                #     ctx,
+                # )
                 return DataType.ANY
 
             left = result
@@ -1195,13 +1198,17 @@ def analyze(code: str):
         tree = parser.program()
         tree_str = tree.toStringTree(recog=parser)
 
+        symbol_table = SymbolTable()
+
         visitor = CompiscriptCompiler()
+        visitor.set_symbol_table(symbol_table)
+        visitor.symbol_table = symbol_table
         visitor.visit(tree)
         errors = visitor.getErrors()
 
         table = visitor.getSymbolTable().to_dict()
 
-        return tree_str, errors, table
+        return tree_str, errors, table, symbol_table
     except Exception as e:
         import traceback
 

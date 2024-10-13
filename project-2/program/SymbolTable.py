@@ -198,6 +198,9 @@ class SymbolTable:
         self.global_scope = Scope("global")
         self.current_scope = self.global_scope
 
+    def reset_scope(self):
+        self.current_scope = self.global_scope
+
     def enter_scope(self, name: str = "") -> Scope:
         new_scope = Scope(
             name=name or f"block_{id(new_scope)}", parent=self.current_scope

@@ -2,6 +2,7 @@ import inspect
 import sys
 
 sys.path.append("..")
+import traceback
 from typing import List, Optional
 
 from antlr4 import *
@@ -24,10 +25,14 @@ from .tac import IntermediateCodeGenerator, Operation
 
 
 class CompiscriptCompiler(CompiscriptVisitor):
-    def __init__(self) -> None:
+    def __init__(self, table: SymbolTable):
+        self.table = table
+        print("Got table from semantic analyzer:", table)
         self.code_generator = IntermediateCodeGenerator()
+        self.current_class: Optional[str] = None
         self.current_function: Optional[str] = None
         self.function_params: List[str] = []
+        self.in_init_method = False
 
     def visit(self, tree):
         if tree is None:
@@ -60,37 +65,88 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # classDecl: 'class' IDENTIFIER ('extends' IDENTIFIER)? '{' functions '}';
     def visitClassDecl(self, ctx: CompiscriptParser.ClassDeclContext):
-        return self.visitChildren(ctx)
+        try:
+
+            # Extract the class name
+            class_name = ctx.IDENTIFIER(0).getText()
+
+            # Extract the superclass name if inheritance is used
+            superclass = ctx.IDENTIFIER(1).getText() if ctx.IDENTIFIER(1) else None
+
+            # Set the current class context
+            self.current_class = class_name
+
+            # Handle inheritance by emitting an INHERIT operation if a superclass is specified
+            if superclass:
+                # Emit the INHERIT operation to represent class inheritance in TAC
+                self.code_generator.emit(
+                    op=Operation.INHERIT,
+                    arg1=superclass,  # The superclass being inherited from
+                    arg2=class_name,  # The current subclass
+                    result=None,  # No result needed for inheritance
+                )
+                print(f"Class '{class_name}' inherits from '{superclass}'")
+
+            # Visit all functions (methods) within the class
+            # Assuming 'functions' rule encompasses both methods and field declarations
+            self.visit(ctx.functions())
+
+            # Reset the current class context after processing the class
+            self.current_class = None
+
+            return class_name
+        except Exception as e:
+            print(f"Error during class declaration: {e}")
+            return None
 
     def visitFunDecl(self, ctx: CompiscriptParser.FunDeclContext):
         return self.visit(ctx.function())
 
     # INDENTIFIER '(' parameters? ')' block
     def visitFunction(self, ctx: CompiscriptParser.FunctionContext):
-        function_name = ctx.IDENTIFIER().getText()
-        self.current_function = function_name
-        self.function_params = []
+        try:
+            function_name = ctx.IDENTIFIER().getText()
 
-        # Emit the label for the function
-        self.code_generator.emit(Operation.LABEL, result=function_name)
+            if self.current_class:
+                # Prefix method names with class name to handle scope
+                full_function_name = f"{self.current_class}.{function_name}"
+            else:
+                full_function_name = function_name
 
-        # If there are parameters, visit them
-        if ctx.parameters():
-            for param in ctx.parameters().IDENTIFIER():
-                param_name = param.getText()
-                self.function_params.append(param_name)
-                # Emit the parameter declaration
-                self.code_generator.emit(Operation.PARAM, result=param_name)
+            self.current_function = full_function_name
+            self.function_params = []
 
-        # Visit the function block
-        self.visit(ctx.block())
+            # Check if this is the 'init' method
+            self.in_init_method = function_name == "init"
 
-        # If there's no return statement, add a default return
-        # self.code_generator.emit(Operation.RETURN)
+            # Emit the label for the function
+            self.code_generator.emit(Operation.LABEL, result=full_function_name)
 
-        self.current_function = None
+            # If within a class, handle 'this' as the first parameter
+            if self.current_class:
+                self.code_generator.emit(Operation.PARAM, arg1="this")
+                self.function_params.append("this")
 
-        return function_name
+            # Handle other parameters
+            if ctx.parameters():
+                for param in ctx.parameters().IDENTIFIER():
+                    param_name = param.getText()
+                    self.function_params.append(param_name)
+                    self.code_generator.emit(Operation.PARAM, arg1=param_name)
+
+            # Visit the function block
+            self.visit(ctx.block())
+
+            # Reset the init method flag and current function
+            self.in_init_method = False
+            self.current_function = None
+            self.function_params = []
+
+            return full_function_name
+        except Exception as e:
+            print(f"Error during function declaration: {e}")
+            traceback.print_exc()
+            return None
 
     # varDecl: 'var' IDENTIFIER ('=' expression)? ';'
     def visitVarDecl(self, ctx: CompiscriptParser.VarDeclContext):
@@ -255,22 +311,61 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # assignment: (call '.')? IDENTIFIER ('+'|'-')? '=' assignment | logicOr | IDENTIFIER ('++' | '--')
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
-        if ctx.IDENTIFIER() is not None:
-            # This is an assignment like 'x = ...'
-            var_name = ctx.IDENTIFIER().getText()
-            # Evaluate the right-hand side
-            expr_result = self.visit(
-                ctx.assignment() if ctx.assignment() else ctx.logicOr()
-            )
-            # Assign the result to the variable
-            self.code_generator.emit(
-                op=Operation.ASSIGN, arg1=expr_result, result=var_name
-            )
-            return var_name
-        else:
-            # Handle 'this' or 'super' assignments if necessary
-            # For now, we treat other cases as expressions
-            return self.visit(ctx.logicOr())
+        try:
+            # Check if the assignment is of the form 'this.varName = expression'
+            if (
+                ctx.getChildCount() >= 3
+                and ctx.getChild(0).getText() == "this"
+                and ctx.getChild(1).getText() == "."
+            ):
+                print("Child 0:", ctx.getChild(0).getText())
+                print("Child 1:", ctx.getChild(1).getText())
+                print("Child 2:", ctx.getChild(2).getText())
+                var_name = ctx.IDENTIFIER().getText()
+                expr_result = self.visit(
+                    ctx.assignment() if ctx.assignment() else ctx.logicOr()
+                )
+
+                in_initializer = self.current_class and self.in_init_method
+
+                if in_initializer:
+                    # Emit STORE_FIELD operation
+                    self.code_generator.emit(
+                        op=Operation.STORE_FIELD,
+                        arg1=expr_result,
+                        arg2=var_name,
+                        result="this",
+                    )
+                    print(f"Stored '{expr_result}' to field '{var_name}' in 'this'")
+                else:
+                    # Emit ASSIGN for regular variable
+                    self.code_generator.emit(
+                        op=Operation.ASSIGN, arg1=expr_result, result=var_name
+                    )
+                    print(f"Assigned '{expr_result}' to variable '{var_name}'")
+
+                return var_name
+
+            else:
+
+                # Handle regular assignments
+                if ctx.IDENTIFIER() is not None:
+                    var_name = ctx.IDENTIFIER().getText()
+                    expr_result = self.visit(
+                        ctx.assignment() if ctx.assignment() else ctx.logicOr()
+                    )
+                    self.code_generator.emit(
+                        op=Operation.ASSIGN, arg1=expr_result, result=var_name
+                    )
+                    print(f"Assigned '{expr_result}' to variable '{var_name}'")
+                    return var_name
+                else:
+                    # Handle other cases if necessary
+                    return self.visit(ctx.logicOr())
+        except Exception as e:
+            print(f"Error during assignment: {e}")
+            traceback.print_exc()
+            return None
 
     # expression: assignment | funAnon
     def visitExpression(self, ctx: CompiscriptParser.ExpressionContext):
@@ -428,7 +523,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
     # unary: ( '!' | '-') unary | call
     def visitUnary(self, ctx: CompiscriptParser.UnaryContext):
         if ctx.call():
-            print("Call:", ctx.call().getText())
             return self.visit(ctx.call())
 
         if ctx.getChildCount() == 1:
@@ -459,28 +553,77 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # instantiation: 'new' IDENTIFIER '(' arguments? ')'
     def visitInstantiation(self, ctx: CompiscriptParser.InstantiationContext):
-        return self.visitChildren(ctx)
+        print("Instantiation:", ctx.getText())
+        # Extract the class name being instantiated
+        class_name = ctx.IDENTIFIER().getText()
+
+        # Emit the allocation of the new object
+        temp = self.code_generator.new_temp()
+        self.code_generator.emit(op=Operation.ALLOCATE, arg1=class_name, result=temp)
+
+        # If the class has a constructor, call the 'init' method
+        constructor_name = f"{class_name}.init"
+
+        # Handle arguments if any are provided
+        arguments = []
+        if ctx.arguments():
+            for arg in ctx.arguments().expression():
+                arg_result = self.visit(arg)
+                arguments.append(arg_result)
+
+        # Emit PARAM instructions for each argument, including 'this' as the first argument
+        self.code_generator.emit(Operation.PARAM, arg1=temp)  # 'this'
+        for arg in arguments:
+            self.code_generator.emit(Operation.PARAM, arg1=arg)
+
+        # Emit the CALL instruction for the constructor
+        self.code_generator.emit(Operation.CALL, arg1=constructor_name, result=None)
+
+        # Return the temp variable holding the newly allocated object
+        return temp
 
     # call: primary ( '(' arguments? ')' | '.' IDENTIFIER | '[' expression ']' )* | funAnon
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        if ctx.primary() and ctx.getChildCount() == 1:
-            print("Primary:", ctx.primary().getText())
-            return self.visit(ctx.primary())
+        if ctx is None:
+            print("Error: ctx is None in visitCall")
+            return None
+
+        result = self.visit(ctx.primary())
 
         for i in range(1, len(ctx.children) - 1, 2):
             child = ctx.getChild(i)
-            if child.getText() == "(":
-                # Function call
-                function_name = ctx.primary().getText()
-                arguments = []
+            if child.getText() == ".":
+                # Handling property access like 'this.field'
+                property_name = ctx.getChild(i + 1).getText()
 
+                # If the left-hand side is 'this', load the field value
+                if ctx.primary().getText() == "this":
+                    field_temp = self.code_generator.new_temp()
+                    self.code_generator.emit(
+                        Operation.LOAD_FIELD,
+                        arg1=property_name,
+                        arg2="this",
+                        result=field_temp,
+                    )
+                    result = field_temp  # Store the result of the field load
+                    print(
+                        f"Loaded field '{property_name}' from 'this' into {field_temp}"
+                    )
+
+            elif child.getText() == "(":
+                # Handling method calls like 'this.method()'
+                function_name = ctx.primary().getText()
+
+                # Prepare arguments for the method call
+                arguments = []
                 if i + 1 < len(ctx.children):
-                    args_ctx = ctx.children[i + 1]
+                    args_ctx = ctx.getChild(i + 1)
                     for arg in args_ctx.expression():
                         arg_result = self.visit(arg)
                         arguments.append(arg_result)
 
                 # Emit PARAM instructions for each argument
+                self.code_generator.emit(Operation.PARAM, arg1="this")  # Pass 'this'
                 for arg in arguments:
                     self.code_generator.emit(Operation.PARAM, arg1=arg)
 
@@ -489,9 +632,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 self.code_generator.emit(
                     Operation.CALL, arg1=function_name, result=temp
                 )
-                return temp
+                result = temp
 
-        return None
+        return result
 
     # primary: 'true' | 'false' | 'nil' | 'this' | 'super' '.' IDENTIFIER | NUMBER | STRING | IDENTIFIER | '(' expression ')' | array | instantiation
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
@@ -503,6 +646,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
             return ctx.STRING().getText()
         elif ctx.IDENTIFIER() is not None:
             if ctx.getChildCount() > 1 and ctx.getChild(1).getText() == "(":
+                print("Primary ->", ctx.getText())
+
                 # Handle function calls
                 return self.visit(ctx.call())
             else:
@@ -510,6 +655,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         elif ctx.expression() is not None:
             # Handle expressions within parentheses
             return self.visit(ctx.expression())
+        elif ctx.instantiation() is not None:
+            # Handle object instantiation
+            return self.visit(ctx.instantiation())
         else:
             # Handle other literals like 'true', 'false', 'nil'
             temp = self.code_generator.new_temp()
@@ -526,7 +674,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
         return self.visitChildren(ctx)
 
 
-def generate_tac(code: str):
+# The table comes from the semantic analyzer. It provides type, scope, and other
+# information about the symbols in the code.
+def generate_tac(code: str, table: SymbolTable) -> List[str]:
     try:
         input_stream = InputStream(code)
         lexer = CompiscriptLexer(input_stream)
@@ -534,7 +684,11 @@ def generate_tac(code: str):
         parser = CompiscriptParser(token_stream)
         tree = parser.program()
 
-        visitor = CompiscriptCompiler()
+        print("\033[H\033[J")
+
+        table.reset_scope()  # We will start from the global scope
+
+        visitor = CompiscriptCompiler(table)
         tac_instructions = visitor.visit(tree)
 
         # Convert the list of instructions to a string representation

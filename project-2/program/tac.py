@@ -4,28 +4,49 @@ from typing import List, Optional
 
 
 class Operation(Enum):
+    # Assignment Operations
+    ASSIGN = auto()
+
+    # Arithmetic Operations
     ADD = auto()
     SUB = auto()
     MUL = auto()
     DIV = auto()
     MOD = auto()
-    ASSIGN = auto()
-    GOTO = auto()
-    IF = auto()
-    IF_FALSE = auto()
-    LABEL = auto()
-    NEG = auto()
+
+    # Logical Operations
+    AND = auto()
+    OR = auto()
     NOT = auto()
-    PRINT = auto()
+    NEG = auto()
+
+    # Comparison Operations
     EQ = auto()
     NE = auto()
     LT = auto()
     LE = auto()
     GT = auto()
     GE = auto()
+
+    # Control Flow Operations
+    GOTO = auto()
+    IF_FALSE = auto()
+    LABEL = auto()
+
+    # Function and Method Operations
     PARAM = auto()  # For passing parameters
-    CALL = auto()  # For calling functions
+    CALL = auto()  # For calling functions/methods
     RETURN = auto()  # For return statements
+
+    # Object-Oriented Operations
+    INHERIT = auto()  # For class inheritance
+    NEW = auto()  # For object instantiation
+    LOAD_FIELD = auto()  # For loading a field's value
+    STORE_FIELD = auto()  # For storing a value to a field
+    ALLOCATE = auto()  # For allocating memory for an object
+
+    # I/O Operations
+    PRINT = auto()
 
 
 @dataclass
