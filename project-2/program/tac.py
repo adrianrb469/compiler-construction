@@ -60,6 +60,13 @@ class Instruction:
         if self.op == Operation.LABEL:
             return f"{self.result}:"
 
+        print(f"self operation: {self.op}")
+
+        # TODO check when self.op is None because it causes an error, why it is None?
+        # in the compiled code there is a output of "Ln:" why?
+        if self.op is None:
+            return ""
+
         parts = [self.op.name]
         if self.arg1 is not None:
             parts.append(str(self.arg1))
