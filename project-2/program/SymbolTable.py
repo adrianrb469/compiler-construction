@@ -368,7 +368,7 @@ class SymbolTable:
             "current_scope": self.current_scope.get_full_scope_name(),
             # Infromation about how scopes were entered and exited, and other
             # information about the scopes
-            "scope_history": [scope.to_dict() for scope in self.scope_history],
+            # "scope_history": [scope.to_dict() for scope in self.scope_history],
             "id_to_scope": {
                 scope_id: scope.to_dict()
                 for scope_id, scope in self.id_to_scope.items()

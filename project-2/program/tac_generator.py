@@ -658,7 +658,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
                         arguments.append(arg_result)
 
                 # Emit PARAM instructions for each argument
-                self.code_generator.emit(Operation.PARAM, arg1="this")  # Pass 'this'
+                if self.current_class:
+                    self.code_generator.emit(
+                        Operation.PARAM, arg1="this"
+                    )  # Pass 'this'
                 for arg in arguments:
                     self.code_generator.emit(Operation.PARAM, arg1=arg)
 
