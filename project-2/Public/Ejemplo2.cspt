@@ -29,7 +29,6 @@ class Producto {
 class Categoria {
   init(nombre) {
     this.nombre = nombre;
-    this.productos = [];
   }
 
   agregarProducto(producto) {

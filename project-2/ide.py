@@ -13,7 +13,7 @@ def show_editor(default_code=""):
         theme="dracula",  # Changed theme to 'dracula' for better color contrast
         language="java",  # Still using 'java' as it’s close to Compiscript
         keybinding="vscode",
-        height=500,
+        height=1000,
         min_lines=35,
         font_size=14,
         tab_size=4,
@@ -26,7 +26,9 @@ def display_compilation_output(tac, errors):
     if errors is None:
         st.subheader("Compiled Three-Address Code")
         # Display the formatted TAC code with correct language (text or other)
-        st.code(tac, language="text", line_numbers=True)
+        with st.container(height=1000, border=False):
+            st.code(tac, language="text", line_numbers=True)
+
     else:
         st.subheader("Compilation Errors")
         st.error("The following errors were found during compilation:")
