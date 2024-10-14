@@ -279,11 +279,6 @@ class SymbolTable:
             self.current_scope_index += 1
             self.current_scope = self.scope_history[self.current_scope_index]
 
-            print(
-                f"Moving from scope '{previous_scope.name}' (ID {previous_scope.unique_id}) "
-                f"to scope '{self.current_scope.name}' (ID {self.current_scope.unique_id})"
-            )
-
             return self.current_scope
         else:
             print("No more scopes to traverse.")
@@ -381,7 +376,7 @@ class SymbolTable:
     def get_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
 
-    def get_class_method(self, class_instance_name:str, method: str):
+    def get_class_method(self, class_instance_name: str, method: str):
         # look for the class method in the symbol table and return it
         scope = self.current_scope
         currentClass = scope.lookup(class_instance_name)
@@ -389,7 +384,7 @@ class SymbolTable:
         if currentClass is None or currentClass.attributes is None:
             return None, None
 
-        classIdentifier = currentClass.attributes['class_name']
+        classIdentifier = currentClass.attributes["class_name"]
         currentClassReference = scope.lookup(classIdentifier)
 
         if currentClassReference is None:
@@ -412,7 +407,7 @@ class SymbolTable:
         if currentClass is None or currentClass.attributes is None:
             return None, None
 
-        classIdentifier = currentClass.attributes['class_name']
+        classIdentifier = currentClass.attributes["class_name"]
         currentClassReference = scope.lookup(classIdentifier)
 
         if currentClassReference is None:

@@ -42,6 +42,7 @@ class Operation(Enum):
     INHERIT = auto()  # For class inheritance
     NEW = auto()  # For object instantiation
     LOAD_FIELD = auto()  # For loading a field's value
+    LOAD_METHOD = auto()  # For loading a method's address
     STORE_FIELD = auto()  # For storing a value to a field
     ALLOCATE = auto()  # For allocating memory for an object
 

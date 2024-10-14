@@ -352,6 +352,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # assignment: (call '.')? IDENTIFIER ('+'|'-')? '=' assignment | logicOr | IDENTIFIER ('++' | '--')
     def visitAssignment(self, ctx: CompiscriptParser.AssignmentContext):
+
         try:
             # Check if the assignment is of the form 'this.varName = expression'
             if (
@@ -359,28 +360,24 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 and ctx.getChild(0).getText() == "this"
                 and ctx.getChild(1).getText() == "."
             ):
+
                 var_name = ctx.IDENTIFIER().getText()
                 expr_result = self.visit(
                     ctx.assignment() if ctx.assignment() else ctx.logicOr()
                 )
 
-                in_initializer = self.current_class and self.in_init_method
+                print("Assignment:", ctx.getText())
+                print("var_name:", var_name)
+                print("expr_result:", expr_result)
 
-                if in_initializer:
-                    # Emit STORE_FIELD operation
-                    self.code_generator.emit(
-                        op=Operation.STORE_FIELD,
-                        arg1=expr_result,
-                        arg2=var_name,
-                        result="this",
-                    )
-                    print(f"Stored '{expr_result}' to field '{var_name}' in 'this'")
-                else:
-                    # Emit ASSIGN for regular variable
-                    self.code_generator.emit(
-                        op=Operation.ASSIGN, arg1=expr_result, result=var_name
-                    )
-                    print(f"Assigned '{expr_result}' to variable '{var_name}'")
+                # Always emit STORE_FIELD for 'this.varName = expression'
+                self.code_generator.emit(
+                    op=Operation.STORE_FIELD,
+                    arg1=expr_result,
+                    arg2=var_name,
+                    result="this",
+                )
+                print(f"Stored '{expr_result}' to field '{var_name}' in 'this'")
 
                 return var_name
 
@@ -392,6 +389,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     expr_result = self.visit(
                         ctx.assignment() if ctx.assignment() else ctx.logicOr()
                     )
+
                     self.code_generator.emit(
                         op=Operation.ASSIGN, arg1=expr_result, result=var_name
                     )
@@ -622,99 +620,134 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
     # call: primary ( '(' arguments? ')' | '.' IDENTIFIER | '[' expression ']' )* | funAnon
     def visitCall(self, ctx: CompiscriptParser.CallContext):
-        if ctx is None:
-            print("Error: ctx is None in visitCall")
-            return None
+        try:
 
-        result = self.visit(ctx.primary())
+            if ctx is None:
+                print("Error: ctx is None in visitCall")
+                return None
 
-        for i in range(1, len(ctx.children) - 1, 2):
-            child = ctx.getChild(i)
+            result = self.visit(ctx.primary())
 
-            if child is None:
-                print(f"Error: child at index {i} is None in visitCall")
-                continue
+            for i in range(1, len(ctx.children) - 1, 2):
+                child = ctx.getChild(i)
 
-            # case: object.method()
-            # NOTE: the foor loop catched this char: "("
-            elif child.getText() == "(":
-                # Handling method calls like 'this.method()'
-                class_instance_name = ctx.primary().getText()
-                method_name = ctx.getChild(i - 1).getText()
-                self.code_generator.get_code()
-
-                class_reference, method = self.table.get_class_method(class_instance_name, method_name)
-
-                # print(f"class: {class_reference} property: {method}")
-
-                temp = self.code_generator.new_temp()
-
-                # Prepare arguments for the method call
-                arguments = []
-                if i + 1 < len(ctx.children):
-                    args_ctx = ctx.getChild(i + 1)
-                    for arg in args_ctx.expression():
-                        arg_result = self.visit(arg)
-                        arguments.append(arg_result)
-
-                # Emit PARAM instructions for each argument
-                if self.current_class:
-                    self.code_generator.emit(
-                        Operation.PARAM, arg1="this"
-                    )  # Pass 'this'
-                for arg in arguments:
-                    self.code_generator.emit(Operation.PARAM, arg1=arg)
-
-                # if the symbol table has the function_name in the symbols, not print it
-
-
-                # Emit the CALL instruction
-                if class_reference is not None and method is not None:
-                    self.code_generator.emit(
-                        Operation.CALL,
-                        arg1=f"{class_reference.name}.{method_name}",
-                        result=temp
-                    )
-                result = temp
-
-            # case: object.property
-            # NOTE: the foor loop catched this char: "."
-            elif child.getText() == ".":
-                # Handling property access like 'this.field'
-                class_instance_name = ctx.primary().getText()
-                field_name = ctx.getChild(i + 1).getText()
-
-                # print(f"class_instance: {class_instance_name} field_name: {field_name}")
-
-                class_reference, field = self.table.get_class_field(class_instance_name, field_name)
-
-                # print(f"*** class: {vars(class_reference)}\n *** field: {vars(field)}")
-
-                if class_reference is None or field is None:
+                if child is None:
+                    print(f"Error: child at index {i} is None in visitCall")
                     continue
 
-                temp = self.code_generator.new_temp()
+                if child.getText() == "(":
 
-                # If the left-hand side is 'this', load the field value
-                if ctx.primary().getText() == "this":
+                    temp = self.code_generator.new_temp()
+
+                    # Prepare arguments for the method call
+                    arguments = []
+                    if i + 1 < len(ctx.children):
+                        args_ctx = ctx.getChild(i + 1)
+                        if hasattr(args_ctx, "expression"):
+                            for arg in args_ctx.expression():
+                                arg_result = self.visit(arg)
+                                if arg_result is None:
+                                    print(
+                                        "Error: Failed to evaluate an argument in visitCall"
+                                    )
+                                    return None
+                                arguments.append(arg_result)
+
+                    # Emit PARAM instructions
+                    if self.current_class:
+                        self.code_generator.emit(Operation.PARAM, arg1="this")
+                    for arg in arguments:
+                        self.code_generator.emit(Operation.PARAM, arg1=arg)
+
+                    # Emit CALL instruction
                     self.code_generator.emit(
-                        Operation.LOAD_FIELD,
-                        arg1=field_name,
-                        arg2="this",
+                        Operation.CALL,
+                        arg1=result,
                         result=temp,
                     )
-                else:
-                    # load any other field from the class
-                    self.code_generator.emit(
-                        Operation.LOAD_FIELD,
-                        arg1=class_instance_name,
-                        arg2=field_name,
-                        result=temp
-                    )
+                    result = temp
 
-                result = temp
+                elif child.getText() == ".":
+                    # Handle field or method access
+                    accessed_object = ctx.primary().getText()
+                    field_name = ctx.getChild(i + 1).getText()
 
-        return result
+                    print("Accessed object:", accessed_object)
+                    print("Field name:", field_name)
+
+                    class_symbol = None
+
+                    if accessed_object in ["this", "super"]:
+                        if self.current_class is None:
+                            print(
+                                "Error: Cannot access fields or methods outside of a class"
+                            )
+                            return None
+                        if accessed_object == "this":
+                            class_symbol = self.table.lookup(self.current_class)
+                        else:
+                            class_symbol = self.table.lookup(self.current_class)
+                            print("Class symbol:", class_symbol)
+                    else:
+                        symbol = self.table.lookup(accessed_object)
+                        if symbol is None:
+                            print(f"Error: Undefined object '{accessed_object}'")
+                            return None
+                        if symbol.data_type != DataType.OBJECT:
+                            print(
+                                "Error: Trying to access a field from a non-object type"
+                            )
+                            return None
+                        if isinstance(symbol, ClassSymbol):
+                            class_symbol = symbol
+                        else:
+                            referenced_class = symbol.attributes.get("class_name")
+                            if referenced_class is None:
+                                print(
+                                    f"Error: Object '{accessed_object}' has no class reference"
+                                )
+                                return None
+                            class_symbol = self.table.lookup(referenced_class)
+                            if not isinstance(class_symbol, ClassSymbol):
+                                print(
+                                    "Error: Trying to access a field from a non-class type"
+                                )
+                                return None
+
+                    # Attempt to get field or method
+                    field = class_symbol.get_field(field_name)
+                    method = class_symbol.get_method(field_name)
+
+                    if field:
+                        # Emit LOAD_FIELD operation
+                        temp = self.code_generator.new_temp()
+                        self.code_generator.emit(
+                            Operation.LOAD_FIELD,
+                            arg1=accessed_object,
+                            arg2=field_name,
+                            result=temp,
+                        )
+                        result = temp
+                    elif method:
+                        # Emit LOAD_METHOD operation
+                        temp = self.code_generator.new_temp()
+                        self.code_generator.emit(
+                            Operation.LOAD_METHOD,
+                            arg1=accessed_object,
+                            arg2=field_name,
+                            result=temp,
+                        )
+                        result = temp
+                    else:
+                        print("Error: Field or method not found in class")
+                        return None
+
+            return result
+
+        except Exception as e:
+            print(f"Error during call: {e}")
+            traceback.print_exc()
+            return None
 
     # primary: 'true' | 'false' | 'nil' | 'this' | 'super' '.' IDENTIFIER | NUMBER | STRING | IDENTIFIER | '(' expression ')' | array | instantiation
     def visitPrimary(self, ctx: CompiscriptParser.PrimaryContext):
@@ -731,6 +764,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 # Handle function calls
                 return self.visit(ctx.call())
             else:
+                # Handle simple identifier
                 return ctx.IDENTIFIER().getText()
         elif ctx.expression() is not None:
             # Handle expressions within parentheses
@@ -738,8 +772,20 @@ class CompiscriptCompiler(CompiscriptVisitor):
         elif ctx.instantiation() is not None:
             # Handle object instantiation
             return self.visit(ctx.instantiation())
+        elif ctx.getText() == "true":
+            return "true"
+        elif ctx.getText() == "false":
+            return "false"
+        elif ctx.getText() == "nil":
+            return "nil"
+        elif ctx.getText() == "this":
+            # Handle 'this' reference in class methods
+            return "this"
+        elif ctx.getText() == "super":
+            # Handle 'super' reference in class methods
+            return "super"
         else:
-            # Handle other literals like 'true', 'false', 'nil'
+            # Handle unexpected cases or literals
             temp = self.code_generator.new_temp()
             value = ctx.getText()
             self.code_generator.emit(Operation.ASSIGN, arg1=value, result=temp)
