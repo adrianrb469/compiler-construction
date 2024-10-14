@@ -9,9 +9,9 @@ This project consists on translate CompiScript code to Three Address Code. The p
 
 ## Project Demo 🎥
 
-https://youtu.be/4A6uMO9N_bY?si=N88NDmuTJpjkNVIW
+https://www.youtube.com/watch?v=dNhl9ZRJfzs
 
-[![CompiScript Demo](https://img.youtube.com/vi/4A6uMO9N_bY/0.jpg)](https://www.youtube.com/watch?v=4A6uMO9N_bY)
+[![CompiScript Demo](https://www.youtube.com/watch?v=dNhl9ZRJfzs)
 
 Click the image above to watch our project demo on YouTube.
 
