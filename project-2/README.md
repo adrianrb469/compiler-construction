@@ -9,9 +9,9 @@ This project consists on translate CompiScript code to Three Address Code. The p
 
 ## Project Demo 🎥
 
-https://youtu.be/4A6uMO9N_bY?si=N88NDmuTJpjkNVIW
+[https://www.youtube.com/watch?v=dNhl9ZRJfzs](https://www.youtube.com/watch?v=dNhl9ZRJfzs)
 
-[![CompiScript Demo](https://img.youtube.com/vi/4A6uMO9N_bY/0.jpg)](https://www.youtube.com/watch?v=4A6uMO9N_bY)
+[![CompiScript Demo](https://img.youtube.com/vi/dNhl9ZRJfzs/0.jpg)](https://www.youtube.com/watch?v=dNhl9ZRJfzs)
 
 Click the image above to watch our project demo on YouTube.
 
@@ -142,4 +142,132 @@ for(var x = 0; x < 10; x++) {
         print "Hello world nested!";
     }
 }
+```
+
+### Classes
+```
+class Persona {
+  init(nombre, edad) {
+    this.nombre = nombre;
+    this.edad = edad;
+  }
+
+  saludar() {
+    print "Hola, mi nombre es " + this.nombre;
+  }
+
+  incrementarEdad(anos) {
+    this.edad = this.edad + anos;
+    print "Ahora tengo " + this.edad + " años.";
+  }
+  
+  getName() {
+      return this.nombre;
+  }
+}
+
+fun main() {
+    var nombre = "Ronald";
+    var ronald = new Persona(nombre, 40);
+    
+    var age = ronald.edad;
+    var name = ronald.getName();
+    ronald.incrementarEdad(1);
+}
+```
+
+### Complex example
+```
+// Without arrays
+class Producto {
+  init(nombre, precio, cantidad) {
+    this.nombre = nombre;
+    this.precio = precio;
+    this.cantidad = cantidad;
+  }
+
+  calcularValorInventario() {
+    var valor = this.precio * this.cantidad;
+    print "Valor del inventario de " + this.nombre + ": " + valor;
+    return valor;
+  }
+
+  vender(cantidadVendida) {
+    if (cantidadVendida <= this.cantidad) {
+      this.cantidad = this.cantidad - cantidadVendida;
+      print "Se vendieron " + cantidadVendida + " unidades de " + this.nombre;
+    } else {
+      print "No hay suficiente inventario para vender " + cantidadVendida + " unidades de " + this.nombre;
+    }
+  }
+
+  restock(cantidadAgregada) {
+    this.cantidad = this.cantidad + cantidadAgregada;
+    print "Se añadieron " + cantidadAgregada + " unidades de " + this.nombre + " al inventario.";
+  }
+}
+
+class Categoria {
+  init(nombre) {
+    this.nombre = nombre;
+    this.producto1 = nil;
+    this.producto2 = nil;
+    this.producto3 = nil;
+  }
+
+  agregarProducto(nombre, precio, cantidad, posicion) {
+    var nuevoProducto = new Producto(nombre, precio, cantidad);
+
+    if (posicion == 1) {
+      this.producto1 = nuevoProducto;
+    } 
+    if (posicion == 2) {
+      this.producto2 = nuevoProducto;
+    } 
+    if (posicion == 3) {
+      this.producto3 = nuevoProducto;
+    }
+
+    print "Producto " + nombre + " añadido a la categoría " + this.nombre;
+  }
+
+  // Método recursivo para calcular el valor total sin arrays
+  calcularValorTotalRecursivo(posicion) {
+    if (posicion > 3) {
+      return 0;
+    }
+
+    var valorProducto = 0;
+
+    if (posicion == 1 and this.producto1 != nil) {
+      valorProducto = this.producto1.calcularValorInventario();
+    } 
+    if (posicion == 2 and this.producto2 != nil) {
+      valorProducto = this.producto2.calcularValorInventario();
+    }
+    if (posicion == 3 and this.producto3 != nil) {
+      valorProducto = this.producto3.calcularValorInventario();
+    }
+
+    return valorProducto + this.calcularValorTotalRecursivo(posicion + 1);
+  }
+
+  mostrarValorTotal() {
+    var valorTotal = this.calcularValorTotalRecursivo(1);
+    print "El valor total de la categoría " + this.nombre + " es: " + valorTotal;
+  }
+}
+
+// Ejemplos de uso
+var electronica = new Categoria("Electrónica");
+electronica.agregarProducto("Laptop", 1000, 10, 1);
+electronica.agregarProducto("Smartphone", 500, 20, 2);
+electronica.agregarProducto("Tablet", 300, 15, 3);
+
+// Operaciones con productos
+electronica.producto1.vender(3);
+electronica.producto2.restock(10);
+
+// Calcular el valor total
+electronica.mostrarValorTotal();
 ```
