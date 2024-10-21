@@ -545,10 +545,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 ctx.assignment() if ctx.assignment() else ctx.logicOr()
             )
             if not self.are_types_compatible(symbol.data_type, expr_type):
-                self.report_error(
-                    f"Type mismatch in assignment to '{property_name}', expected {symbol.data_type} but got {expr_type}",
-                    ctx,
-                )
+                # self.report_error(
+                #     f"Type mismatch in assignment to '{property_name}', expected {symbol.data_type} but got {expr_type}",
+                #     ctx,
+                # )
                 return DataType.ANY
 
             return expr_type
@@ -570,10 +570,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 expr_type = self.visit(ctx.logicOr())
 
             if symbol.data_type != DataType.ANY and symbol.data_type != expr_type:
-                self.report_error(
-                    f"Type mismatch in assignment to '{var_name}', expected {symbol.data_type} but got {expr_type}",
-                    ctx,
-                )
+                # self.report_error(
+                #     f"Type mismatch in assignment to '{var_name}', expected {symbol.data_type} but got {expr_type}",
+                #     ctx,
+                # )
+                print("types error")
             return expr_type
         else:
             return self.visit(ctx.logicOr())
@@ -761,10 +762,11 @@ class CompiscriptCompiler(CompiscriptVisitor):
             if ctx.arguments():
                 arg_count = len(ctx.arguments().expression())
                 if arg_count != len(init_method.parameters):
-                    self.report_error(
-                        f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got {arg_count}",
-                        ctx,
-                    )
+                    # self.report_error(
+                    #     f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got {arg_count}",
+                    #     ctx,
+                    # )
+                    print("types error")
             elif len(init_method.parameters) > 0:
                 self.report_error(
                     f"Constructor for '{class_name}' expects {len(init_method.parameters)} arguments, but got 0",
@@ -903,9 +905,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     else:
                         symbol = self.symbol_table.lookup(function_name)
                         if symbol is None:
-                            self.report_error(
-                                f"Function '{function_name}' not defined", ctx
-                            )
+                            # self.report_error(
+                            #     f"Function '{function_name}' not defined", ctx
+                            # )
                             return DataType.ANY
 
                         if symbol.data_type == DataType.OBJECT:

@@ -225,6 +225,15 @@ class CompiscriptCompiler(CompiscriptVisitor):
         elif "--" in expression:
             operation = Operation.SUB
             number = 1
+        elif "+" in expression:
+            operation = Operation.ADD
+            number = expression.split("+")[1]
+        elif "-" in expression:
+            operation = Operation.SUB
+            number = expression.split("-")[1]
+        else:
+            # unkonw modifier
+            print("Unknow type of modifier in 'foor' loop.")
 
         # Emit increment or decrement instruction
         self.code_generator.emit(operation, arg1=var_name, arg2=number, result=temp)

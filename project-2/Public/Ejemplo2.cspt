@@ -1,3 +1,4 @@
+// Without arrays
 class Producto {
   init(nombre, precio, cantidad) {
     this.nombre = nombre;
@@ -29,43 +30,63 @@ class Producto {
 class Categoria {
   init(nombre) {
     this.nombre = nombre;
+    this.producto1 = nil;
+    this.producto2 = nil;
+    this.producto3 = nil;
   }
 
-  agregarProducto(producto) {
-    this.productos.add(producto);
-    print "Producto " + producto.nombre + " añadido a la categoría " + this.nombre;
-  }
+  agregarProducto(nombre, precio, cantidad, posicion) {
+    var nuevoProducto = new Producto(nombre, precio, cantidad);
 
-  // Método recursivo para calcular el valor total de la categoría
-  calcularValorTotalRecursivo(indice) {
-    if (indice >= this.productos.length) {
-      return 0;
-    } else {
-      var valorProducto = this.productos[indice].calcularValorInventario();
-      return valorProducto + this.calcularValorTotalRecursivo(indice + 1);
+    if (posicion == 1) {
+      this.producto1 = nuevoProducto;
+    } 
+    if (posicion == 2) {
+      this.producto2 = nuevoProducto;
+    } 
+    if (posicion == 3) {
+      this.producto3 = nuevoProducto;
     }
+
+    print "Producto " + nombre + " añadido a la categoría " + this.nombre;
+  }
+
+  // Método recursivo para calcular el valor total sin arrays
+  calcularValorTotalRecursivo(posicion) {
+    if (posicion > 3) {
+      return 0;
+    }
+
+    var valorProducto = 0;
+
+    if (posicion == 1 and this.producto1 != nil) {
+      valorProducto = this.producto1.calcularValorInventario();
+    } 
+    if (posicion == 2 and this.producto2 != nil) {
+      valorProducto = this.producto2.calcularValorInventario();
+    }
+    if (posicion == 3 and this.producto3 != nil) {
+      valorProducto = this.producto3.calcularValorInventario();
+    }
+
+    return valorProducto + this.calcularValorTotalRecursivo(posicion + 1);
   }
 
   mostrarValorTotal() {
-    var valorTotal = this.calcularValorTotalRecursivo(0);
+    var valorTotal = this.calcularValorTotalRecursivo(1);
     print "El valor total de la categoría " + this.nombre + " es: " + valorTotal;
   }
 }
 
 // Ejemplos de uso
-
 var electronica = new Categoria("Electrónica");
-var laptop = new Producto("Laptop", 1000, 10);
-var smartphone = new Producto("Smartphone", 500, 20);
-var tablet = new Producto("Tablet", 300, 15);
+electronica.agregarProducto("Laptop", 1000, 10, 1);
+electronica.agregarProducto("Smartphone", 500, 20, 2);
+electronica.agregarProducto("Tablet", 300, 15, 3);
 
-electronica.agregarProducto(laptop);
-electronica.agregarProducto(smartphone);
-electronica.agregarProducto(tablet);
-
-laptop.vender(3);
-smartphone.restock(10);
+// Operaciones con productos
+electronica.producto1.vender(3);
+electronica.producto2.restock(10);
 
 // Calcular el valor total
 electronica.mostrarValorTotal();
-
