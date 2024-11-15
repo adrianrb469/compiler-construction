@@ -118,16 +118,69 @@ class MIPSCodeGenerator:
 
     def handle_arithmetic(self, instr: Instruction):
         reg_result = self.get_register(instr.result)
-        reg_arg1 = self.get_register(instr.arg1)
-        reg_arg2 = self.get_register(instr.arg2)
+        op = instr.op
+        arg1 = instr.arg1
+        arg2 = instr.arg2
+
+        # Determine if arg1 or arg2 is a constant
+        if arg1.isdigit():
+            # For commutative operations like ADD and MUL, you can swap operands
+            if op in {Operation.ADD, Operation.MUL} and arg2.isdigit():
+                # Both operands are constants - handle accordingly (possibly optimization)
+                # For simplicity, handle one constant at a time
+                reg_arg1 = self.get_register(instr.arg1)
+                self.text_section.append(
+                    f"li {reg_arg1}, {arg1}  # Load constant {arg1}"
+                )
+                reg_arg2 = self.get_register(instr.arg2)
+                self.text_section.append(
+                    f"li {reg_arg2}, {arg2}  # Load constant {arg2}"
+                )
+                self.text_section.append(
+                    f"{op_map[op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {instr.arg1} {op.name.lower()} {instr.arg2}"
+                )
+                return
+            elif op in {Operation.ADD, Operation.SUB}:
+                # Use immediate instructions where possible
+                reg_arg1 = self.get_register(instr.arg1)
+                imm = arg2
+                if op == Operation.ADD:
+                    self.text_section.append(
+                        f"addi {reg_result}, {reg_arg1}, {imm}  # {instr.result} = {instr.arg1} + {imm}"
+                    )
+                elif op == Operation.SUB:
+                    self.text_section.append(
+                        f"addi {reg_result}, {reg_arg1}, {-int(imm)}  # {instr.result} = {instr.arg1} - {imm}"
+                    )
+                return
+
+        elif arg2.isdigit():
+            if op in {Operation.ADD, Operation.SUB}:
+                reg_arg1 = self.get_register(instr.arg1)
+                imm = arg2
+                if op == Operation.ADD:
+                    self.text_section.append(
+                        f"addi {reg_result}, {reg_arg1}, {imm}  # {instr.result} = {instr.arg1} + {imm}"
+                    )
+                elif op == Operation.SUB:
+                    self.text_section.append(
+                        f"addi {reg_result}, {reg_arg1}, {-int(imm)}  # {instr.result} = {instr.arg1} - {imm}"
+                    )
+                return
+
+        # Fallback to register-based instructions
+        reg_arg1 = self.get_register(arg1)
+        reg_arg2 = self.get_register(arg2)
+
         op_map = {
             Operation.ADD: "add",
             Operation.SUB: "sub",
             Operation.MUL: "mul",
             Operation.DIV: "div",
         }
+
         self.text_section.append(
-            f"{op_map[instr.op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {instr.arg1} {instr.op.name.lower()} {instr.arg2}"
+            f"{op_map[op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {arg1} {op.name.lower()} {arg2}"
         )
 
     def handle_comparison(self, instr: Instruction):
