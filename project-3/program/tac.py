@@ -56,10 +56,11 @@ class Instruction:
     arg1: Optional[str] = None
     arg2: Optional[str] = None
     result: Optional[str] = None
+    main: Optional[bool] = False
 
     def __str__(self):
         if self.op == Operation.LABEL:
-            return f"{self.result}:"
+            return f"{self.main} {self.result}_:"
 
         # TODO check when self.op is None because it causes an error, why it is None?
         # in the compiled code there is a output of "Ln:" why?
@@ -73,14 +74,17 @@ class Instruction:
             parts.append(str(self.arg2))
         if self.result is not None:
             parts.append(str(self.result))
-        return "    " + " ".join(parts)  # Add indentation for non-label instructions
+        return f"{self.main}    " + " ".join(
+            parts
+        )  # Add indentation for non-label instructions
 
 
 class IntermediateCodeGenerator:
-    def __init__(self):
+    def __init__(self, table):
         self.code: List[Instruction] = []
         self.temp_count: int = 0
         self.label_count: int = 0
+        self.table = table
 
     def new_temp(self) -> str:
         """Generate a new temporary variable."""
@@ -100,7 +104,11 @@ class IntermediateCodeGenerator:
         result: Optional[str] = None,
     ) -> None:
         """Emit a TAC instruction as an Instruction instance."""
-        instruction = Instruction(op=op, arg1=arg1, arg2=arg2, result=result)
+        print(self.table.current_scope)
+        main_code = self.table.current_scope.name == "global"
+        instruction = Instruction(
+            op=op, arg1=arg1, arg2=arg2, result=result, main=main_code
+        )
         self.code.append(instruction)
 
     def get_code(self) -> List[Instruction]:

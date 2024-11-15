@@ -26,7 +26,7 @@ from .tac import IntermediateCodeGenerator, Operation
 class CompiscriptCompiler(CompiscriptVisitor):
     def __init__(self, table: SymbolTable):
         self.table = table
-        self.code_generator = IntermediateCodeGenerator()
+        self.code_generator = IntermediateCodeGenerator(table)
         self.current_class: Optional[str] = None
         self.current_function: Optional[str] = None
         self.function_params: List[str] = []
@@ -138,6 +138,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             # Visit the function block
             self.visit(ctx.block())
+
+            # Always return to the caller function
+            self.code_generator.emit(Operation.RETURN)
 
             # Reset the init method flag and current function
             self.in_init_method = False

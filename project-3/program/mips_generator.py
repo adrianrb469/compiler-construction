@@ -65,37 +65,82 @@ class MIPSCodeGenerator:
         return f"-{self.stack_offset}($sp)"
 
     def generate(self, instructions: List[Instruction]) -> str:
-        for instr in instructions:
-            if instr.op == Operation.ASSIGN:
-                self.handle_assign(instr)
-            elif instr.op in {
-                Operation.ADD,
-                Operation.SUB,
-                Operation.MUL,
-                Operation.DIV,
-            }:
-                self.handle_arithmetic(instr)
-            elif instr.op in {
-                Operation.GT,
-                Operation.LT,
-                Operation.GE,
-                Operation.LE,
-                Operation.EQ,
-                Operation.NE,
-            }:
-                self.handle_comparison(instr)
-            elif instr.op == Operation.IF_FALSE:
-                self.handle_if_false(instr)
-            elif instr.op == Operation.GOTO:
-                self.handle_goto(instr)
-            elif instr.op == Operation.LABEL:
-                self.handle_label(instr)
-            elif instr.op == Operation.PRINT:
-                self.handle_print(instr)
+        procedures = {}
+        main_instructions = []
+        current_proc = None  # None indicates main scope
 
-        # Add program termination
-        program_end = "li $v0, 10  # Syscall to exit\nsyscall"
-        return "\n".join(self.data_section + self.text_section + [program_end])
+        for instr in instructions:
+            if not instr.main and instr.op == Operation.LABEL:
+                current_proc = instr.result
+                if current_proc in procedures:
+                    raise ValueError(f"Duplicate procedure label: {current_proc}")
+                procedures[current_proc] = []
+                continue  # Move to next instruction after setting procedure
+            elif instr.main:
+                main_instructions.append(instr)
+            elif current_proc:
+                procedures[current_proc].append(instr)
+            else:
+                print(instr)
+                raise ValueError("Instruction not part of main or any procedure")
+
+        # Initialize the text section with the .text directive and main label
+        self.text_section = [".text", "main:"]
+
+        # Process main instructions
+        self.current_procedure = "main"
+        self.current_param = {}
+        for instr in main_instructions:
+            self.process_instruction(instr)
+
+        # Add program termination to main
+        self.text_section.extend(["li $v0, 10  # Syscall to exit", "syscall"])
+
+        # Process each procedure separately
+        for proc_label, proc_instructions in procedures.items():
+            self.text_section.append(f"{proc_label}:  # Procedure {proc_label}")
+            self.current_procedure = proc_label
+            self.current_param[proc_label] = 0
+            for instr in proc_instructions:
+                self.process_instruction(instr)
+
+        # Combine data and text sections
+        return "\n".join(self.data_section + self.text_section)
+
+    def process_instruction(self, instr: Instruction):
+        if instr.op == Operation.PARAM:
+            self.handle_param(instr)
+        elif instr.op == Operation.CALL:
+            self.handle_call(instr)
+        elif instr.op == Operation.RETURN:
+            self.handle_return(instr)
+        elif instr.op == Operation.ASSIGN:
+            self.handle_assign(instr)
+        elif instr.op in {
+            Operation.ADD,
+            Operation.SUB,
+            Operation.MUL,
+            Operation.DIV,
+            Operation.MOD,
+        }:
+            self.handle_arithmetic(instr)
+        elif instr.op in {
+            Operation.GT,
+            Operation.LT,
+            Operation.GE,
+            Operation.LE,
+            Operation.EQ,
+            Operation.NE,
+        }:
+            self.handle_comparison(instr)
+        elif instr.op == Operation.IF_FALSE:
+            self.handle_if_false(instr)
+        elif instr.op == Operation.GOTO:
+            self.handle_goto(instr)
+        elif instr.op == Operation.PRINT:
+            self.handle_print(instr)
+        else:
+            raise ValueError(f"Unsupported operation: {instr.op}")
 
     def handle_assign(self, instr: Instruction):
         """
@@ -221,6 +266,22 @@ class MIPSCodeGenerator:
     def handle_goto(self, instr: Instruction):
         self.text_section.append(f"j {instr.result}  # goto {instr.result}")
 
+    def handle_call(self, instr: Instruction):
+        """
+        Handle procedure call operations.
+        """
+        # instr.result contains the label of the procedure to call
+        procedure_label = instr.arg1
+        self.text_section.append(
+            f"jal {procedure_label}  # Call procedure {procedure_label}"
+        )
+
+    def handle_return(self, instr: Instruction):
+        """
+        Handle procedure return operations.
+        """
+        self.text_section.append("jr $ra  # Return from procedure")
+
     def handle_label(self, instr: Instruction):
         self.text_section.append(f"{instr.result}:  # Label {instr.result}")
 
@@ -243,22 +304,3 @@ class MIPSCodeGenerator:
             self.string_literals[value] = label
             self.data_section.append(f"{label}: .asciiz {value}")
         return self.string_literals[value]
-
-
-instructions = [
-    Instruction(op=Operation.ASSIGN, arg1="5", result="x"),
-    Instruction(op=Operation.GT, arg1="x", arg2="4", result="t1"),
-    Instruction(op=Operation.IF_FALSE, arg1="t1", result="L1"),
-    Instruction(op=Operation.PRINT, arg1='"test"'),
-    Instruction(op=Operation.GOTO, result="L2"),
-    Instruction(op=Operation.LABEL, result="L1"),
-    Instruction(op=Operation.ASSIGN, arg1='"string"', result="y"),
-    Instruction(op=Operation.LABEL, result="L2"),
-]
-
-mips = MIPSCodeGenerator()
-mips_code = mips.generate(instructions)
-
-# Save the generated MIPS code to a file
-with open("output.s", "w") as f:
-    f.write(mips_code)
