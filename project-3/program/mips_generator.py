@@ -98,80 +98,29 @@ class MIPSCodeGenerator:
         return "\n".join(self.data_section + self.text_section + [program_end])
 
     def handle_assign(self, instr: Instruction):
+        """
+        Handle assignment operations.
+        """
+
         if instr.arg1.startswith('"'):  # String literal
             label = self.get_string_literal(instr.arg1)
             reg = self.get_register(instr.result)
-            self.text_section.append(
-                f"la {reg}, {label}  # {instr.result} = {instr.arg1}"
-            )
+            self.text_section.append(f"la {reg}, {label}")
         elif instr.arg1.isdigit():  # Numeric constant
             reg = self.get_register(instr.result)
-            self.text_section.append(
-                f"li {reg}, {instr.arg1}  # {instr.result} = {instr.arg1}"
-            )
+            self.text_section.append(f"li {reg}, {instr.arg1}")
         else:  # Variable/temporary in a register
             src_reg = self.get_register(instr.arg1)
             dest_reg = self.get_register(instr.result)
-            self.text_section.append(
-                f"move {dest_reg}, {src_reg}  # {instr.result} = {instr.arg1}"
-            )
+            self.text_section.append(f"move {dest_reg}, {src_reg}")
 
     def handle_arithmetic(self, instr: Instruction):
-        reg_result = self.get_register(instr.result)
-        op = instr.op
-        arg1 = instr.arg1
-        arg2 = instr.arg2
+        """
+        Handle arithmetic operations: ADD, SUB, MUL, DIV, MOD.
+        Translates TAC arithmetic instructions into MIPS instructions.
+        """
 
-        # Determine if arg1 or arg2 is a constant
-        if arg1.isdigit():
-            # For commutative operations like ADD and MUL, you can swap operands
-            if op in {Operation.ADD, Operation.MUL} and arg2.isdigit():
-                # Both operands are constants - handle accordingly (possibly optimization)
-                # For simplicity, handle one constant at a time
-                reg_arg1 = self.get_register(instr.arg1)
-                self.text_section.append(
-                    f"li {reg_arg1}, {arg1}  # Load constant {arg1}"
-                )
-                reg_arg2 = self.get_register(instr.arg2)
-                self.text_section.append(
-                    f"li {reg_arg2}, {arg2}  # Load constant {arg2}"
-                )
-                self.text_section.append(
-                    f"{op_map[op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {instr.arg1} {op.name.lower()} {instr.arg2}"
-                )
-                return
-            elif op in {Operation.ADD, Operation.SUB}:
-                # Use immediate instructions where possible
-                reg_arg1 = self.get_register(instr.arg1)
-                imm = arg2
-                if op == Operation.ADD:
-                    self.text_section.append(
-                        f"addi {reg_result}, {reg_arg1}, {imm}  # {instr.result} = {instr.arg1} + {imm}"
-                    )
-                elif op == Operation.SUB:
-                    self.text_section.append(
-                        f"addi {reg_result}, {reg_arg1}, {-int(imm)}  # {instr.result} = {instr.arg1} - {imm}"
-                    )
-                return
-
-        elif arg2.isdigit():
-            if op in {Operation.ADD, Operation.SUB}:
-                reg_arg1 = self.get_register(instr.arg1)
-                imm = arg2
-                if op == Operation.ADD:
-                    self.text_section.append(
-                        f"addi {reg_result}, {reg_arg1}, {imm}  # {instr.result} = {instr.arg1} + {imm}"
-                    )
-                elif op == Operation.SUB:
-                    self.text_section.append(
-                        f"addi {reg_result}, {reg_arg1}, {-int(imm)}  # {instr.result} = {instr.arg1} - {imm}"
-                    )
-                return
-
-        # Fallback to register-based instructions
-        reg_arg1 = self.get_register(arg1)
-        reg_arg2 = self.get_register(arg2)
-
+        # Mapping from Operation to MIPS instruction
         op_map = {
             Operation.ADD: "add",
             Operation.SUB: "sub",
@@ -179,9 +128,65 @@ class MIPSCodeGenerator:
             Operation.DIV: "div",
         }
 
-        self.text_section.append(
-            f"{op_map[op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {arg1} {op.name.lower()} {arg2}"
-        )
+        if instr.op in op_map:
+            mips_op = op_map[instr.op]
+
+            # Handle arg1
+            if instr.arg1.isdigit():
+                # If arg1 is a constant, load it into a temporary register
+                temp_reg1 = self.get_register(f"const_{instr.arg1}")
+                self.text_section.append(f"li {temp_reg1}, {instr.arg1}")
+                reg_arg1 = temp_reg1
+            else:
+                # Otherwise, get the register containing arg1
+                reg_arg1 = self.get_register(instr.arg1)
+
+            # Handle arg2
+            if instr.arg2.isdigit():
+                # If arg2 is a constant, load it into a temporary register
+                temp_reg2 = self.get_register(f"const_{instr.arg2}")
+                self.text_section.append(f"li {temp_reg2}, {instr.arg2}")
+                reg_arg2 = temp_reg2
+            else:
+                # Otherwise, get the register containing arg2
+                reg_arg2 = self.get_register(instr.arg2)
+
+            # Allocate a register for the result
+            reg_result = self.get_register(instr.result)
+
+            # Emit the MIPS instruction
+            self.text_section.append(f"{mips_op} {reg_result}, {reg_arg1}, {reg_arg2}")
+
+        elif instr.op == Operation.MOD:
+            # For modulo operation, use 'div' and 'mfhi'
+
+            # Handle arg1
+            if instr.arg1.isdigit():
+                temp_reg1 = self.get_register(f"const_{instr.arg1}")
+                self.text_section.append(f"li {temp_reg1}, {instr.arg1}")
+                reg_arg1 = temp_reg1
+            else:
+                reg_arg1 = self.get_register(instr.arg1)
+
+            # Handle arg2
+            if instr.arg2.isdigit():
+                temp_reg2 = self.get_register(f"const_{instr.arg2}")
+                self.text_section.append(f"li {temp_reg2}, {instr.arg2}")
+                reg_arg2 = temp_reg2
+            else:
+                reg_arg2 = self.get_register(instr.arg2)
+
+            # Emit the 'div' instruction
+            self.text_section.append(f"div {reg_arg1}, {reg_arg2}")
+            # Move the remainder from HI to the result register
+            self.text_section.append(f"mfhi {reg_result}")
+
+        else:
+            raise ValueError(f"Unsupported arithmetic operation: {instr.op}")
+
+        # Update register descriptors
+        self.register_descriptor[reg_result].add(instr.result)
+        self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
 
     def handle_comparison(self, instr: Instruction):
         reg_result = self.get_register(instr.result)
@@ -190,9 +195,7 @@ class MIPSCodeGenerator:
         # Ensure arg2 (a constant) is loaded into a register if needed
         if instr.arg2.isdigit():
             reg_arg2 = self.get_register(instr.arg2)
-            self.text_section.append(
-                f"li {reg_arg2}, {instr.arg2}  # Load constant {instr.arg2}"
-            )
+            self.text_section.append(f"li {reg_arg2}, {instr.arg2}")
         else:
             reg_arg2 = self.get_register(instr.arg2)
 
@@ -204,6 +207,7 @@ class MIPSCodeGenerator:
             Operation.EQ: "seq",
             Operation.NE: "sne",
         }
+
         self.text_section.append(
             f"{op_map[instr.op]} {reg_result}, {reg_arg1}, {reg_arg2}  # {instr.result} = {instr.arg1} {instr.op.name.lower()} {instr.arg2}"
         )
@@ -224,12 +228,12 @@ class MIPSCodeGenerator:
         if instr.arg1.startswith('"'):  # String literal
             label = self.get_string_literal(instr.arg1)
             self.text_section.append(f"li $v0, 4  # Print string")
-            self.text_section.append(f"la $a0, {label}  # Load address of {instr.arg1}")
+            self.text_section.append(f"la $a0, {label}")
             self.text_section.append("syscall")
         else:  # Variable (assume numeric for now)
             reg = self.get_register(instr.arg1)
             self.text_section.append(f"li $v0, 1  # Print integer")
-            self.text_section.append(f"move $a0, {reg}  # Load value of {instr.arg1}")
+            self.text_section.append(f"move $a0, {reg}")
             self.text_section.append("syscall")
 
     def get_string_literal(self, value: str) -> str:
