@@ -6,7 +6,6 @@ import traceback
 from typing import List, Optional
 
 from antlr4 import *
-from utils.utils import arithmetic_op, getDeclType, types_comparable
 
 from .CompiscriptLexer import CompiscriptLexer
 from .CompiscriptParser import CompiscriptParser
