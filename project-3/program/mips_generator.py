@@ -90,17 +90,42 @@ class MIPSCodeGenerator:
         return f"-{self.stack_offset}($sp)"
 
     def generate(self, instructions: List[Instruction]) -> str:
-
+        # Initialize the .text section with the directive and main label
         self.text_section = [".text", "main:"]
 
+        # Process each instruction and append to the text section
         for instr in instructions:
             self.process_instruction(instr)
 
-        return "\n".join(
-            self.data_section + self.text_section + ["li $v0, 10", "syscall"]
-        )
+        # Append termination code to the text section
+        self.text_section += ["li $v0, 10", "syscall"]
+
+        # Indent the .text section
+        indented_text_section = []
+        for line in self.text_section:
+            if line.endswith(":") or line.startswith("."):
+                # Labels and directives are not indented
+                indented_text_section.append(line)
+            else:
+                # Instructions are indented with 4 spaces
+                indented_text_section.append(f"    {line}")
+
+        # Indent the .data section
+        indented_data_section = [
+            self.data_section[0]
+        ]  # Assuming the first line is '.data'
+        for line in self.data_section[1:]:
+            indented_data_section.append(f"    {line}")
+
+        # Combine the indented .data and .text sections
+        final_code = "\n".join(indented_data_section + indented_text_section)
+
+        return final_code
 
     def process_instruction(self, instr: Instruction):
+
+        print(f"Processing instruction: {instr}")
+
         if instr.op == Operation.PARAM:
             self.handle_param(instr)
         elif instr.op == Operation.CALL:
@@ -134,8 +159,102 @@ class MIPSCodeGenerator:
             self.handle_print(instr)
         elif instr.op == Operation.LABEL:
             self.handle_label(instr)
+        elif instr.op == Operation.AND:
+            self.handle_and(instr)
+
+        elif instr.op == Operation.OR:
+            self.handle_or(instr)
+
         else:
             raise ValueError(f"Unsupported operation: {instr.op}")
+
+    def handle_and(self, instr: Instruction):
+        """
+        Handle logical AND operations.
+        Translates TAC AND instructions into MIPS instructions.
+        """
+        reg_result = self.get_register(instr.result)
+
+        # Handle arg1
+        if instr.arg1.isdigit():
+            const_var1 = f"const_{instr.arg1}"
+            temp_reg1 = self.get_register(const_var1)
+            self.text_section.append(f"li {temp_reg1}, {instr.arg1}")
+            reg_arg1 = temp_reg1
+        else:
+            reg_arg1 = self.get_register(instr.arg1)
+            if instr.arg1 in self.variables:
+                self.text_section.append(f"lw {reg_arg1}, {instr.arg1}")
+
+        # Handle arg2
+        if instr.arg2.isdigit():
+            # Use immediate instruction if possible
+            self.text_section.append(
+                f"andi {reg_result}, {reg_arg1}, {instr.arg2}  # AND with immediate"
+            )
+        else:
+            reg_arg2 = self.get_register(instr.arg2)
+            if instr.arg2 in self.variables:
+                self.text_section.append(f"lw {reg_arg2}, {instr.arg2}")
+            self.text_section.append(
+                f"and {reg_result}, {reg_arg1}, {reg_arg2}  # AND operation"
+            )
+
+        # Update register descriptors
+        self.register_descriptor[reg_result].add(instr.result)
+        self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
+
+        # Free source registers if they were temporary
+        if instr.arg1.isdigit():
+            self.free_register(f"const_{instr.arg1}")
+        if instr.arg2.isdigit():
+            self.free_register(f"const_{instr.arg2}")
+        else:
+            self.free_register(instr.arg2)
+
+    def handle_or(self, instr: Instruction):
+        """
+        Handle logical OR operations.
+        Translates TAC OR instructions into MIPS instructions.
+        """
+        reg_result = self.get_register(instr.result)
+
+        # Handle arg1
+        if instr.arg1.isdigit():
+            const_var1 = f"const_{instr.arg1}"
+            temp_reg1 = self.get_register(const_var1)
+            self.text_section.append(f"li {temp_reg1}, {instr.arg1}")
+            reg_arg1 = temp_reg1
+        else:
+            reg_arg1 = self.get_register(instr.arg1)
+            if instr.arg1 in self.variables:
+                self.text_section.append(f"lw {reg_arg1}, {instr.arg1}")
+
+        # Handle arg2
+        if instr.arg2.isdigit():
+            # Use immediate instruction if possible
+            self.text_section.append(
+                f"ori {reg_result}, {reg_arg1}, {instr.arg2}  # OR with immediate"
+            )
+        else:
+            reg_arg2 = self.get_register(instr.arg2)
+            if instr.arg2 in self.variables:
+                self.text_section.append(f"lw {reg_arg2}, {instr.arg2}")
+            self.text_section.append(
+                f"or {reg_result}, {reg_arg1}, {reg_arg2}  # OR operation"
+            )
+
+        # Update register descriptors
+        self.register_descriptor[reg_result].add(instr.result)
+        self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
+
+        # Free source registers if they were temporary
+        if instr.arg1.isdigit():
+            self.free_register(f"const_{instr.arg1}")
+        if instr.arg2.isdigit():
+            self.free_register(f"const_{instr.arg2}")
+        else:
+            self.free_register(instr.arg2)
 
     def ensure_variable(self, var: str):
         """Ensure that a variable is declared in the data section."""
@@ -307,25 +426,27 @@ class MIPSCodeGenerator:
     def handle_comparison(self, instr: Instruction):
         reg_result = self.get_register(instr.result)
 
+        # Handle arg1
         if instr.arg1.isdigit():
             reg_arg1 = self.get_register(instr.arg1)
             self.text_section.append(f"li {reg_arg1}, {instr.arg1}")
         elif instr.arg1 in self.variables:
             reg_arg1 = self.get_register(instr.arg1)
             self.text_section.append(f"lw {reg_arg1}, {instr.arg1}")
+        else:
+            reg_arg1 = self.get_register(instr.arg1)
 
-        reg_arg1 = self.get_register(instr.arg1)
-
-        print(f"Comparing {instr.arg1} and {instr.arg2}")
-
+        # Handle arg2
         if instr.arg2.isdigit():
             reg_arg2 = self.get_register(instr.arg2)
             self.text_section.append(f"li {reg_arg2}, {instr.arg2}")
         elif instr.arg2 in self.variables:
             reg_arg2 = self.get_register(instr.arg2)
             self.text_section.append(f"lw {reg_arg2}, {instr.arg2}")
+        else:
+            reg_arg2 = self.get_register(instr.arg2)
 
-        reg_arg2 = self.get_register(instr.arg2)
+        print(f"Comparing {instr.arg1} and {instr.arg2}")
 
         op_map = {
             Operation.GT: "sgt",
@@ -339,6 +460,14 @@ class MIPSCodeGenerator:
         self.text_section.append(
             f"{op_map[instr.op]} {reg_result}, {reg_arg1}, {reg_arg2} # {instr.op}"
         )
+
+        # Update register descriptors
+        self.register_descriptor[reg_result].add(instr.result)
+        self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
+
+        # Free source registers after use
+        self.free_register(instr.arg1)
+        self.free_register(instr.arg2)
 
     def handle_if_false(self, instr: Instruction):
         reg = self.get_register(instr.arg1)
@@ -364,7 +493,7 @@ class MIPSCodeGenerator:
         self.text_section.append("jr $ra")
 
     def handle_label(self, instr: Instruction):
-        self.text_section.append(f"{instr.result}:  # Label {instr.result}")
+        self.text_section.append(f"{instr.result}:")
 
     def handle_print(self, instr: Instruction):
         if instr.arg1.startswith('"'):  # String literal
