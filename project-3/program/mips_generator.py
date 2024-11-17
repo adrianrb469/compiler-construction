@@ -94,18 +94,31 @@ class MIPSCodeGenerator:
             self.process_instruction(instr)
 
         # Add program termination to main
-        self.text_section.extend(["li $v0, 10  # Syscall to exit", "syscall"])
+        self.text_section.extend(["li $v0, 10", "syscall"])
 
         # Process each procedure separately
         for proc_label, proc_instructions in procedures.items():
-            self.text_section.append(f"{proc_label}:  # Procedure {proc_label}")
+            self.text_section.append(f"{proc_label}:")
             self.current_procedure = proc_label
             self.current_param[proc_label] = 0
             for instr in proc_instructions:
                 self.process_instruction(instr)
 
+        # Indent the instructions under each procedure
+        indented_text_section = []
+        for line in self.text_section:
+            if line.endswith(":"):
+                indented_text_section.append(line)
+            else:
+                indented_text_section.append(f"    {line}")
+
+        # Indent the data section
+        indented_data_section = [".data"]
+        for line in self.data_section[1:]:
+            indented_data_section.append(f"    {line}")
+
         # Combine data and text sections
-        return "\n".join(self.data_section + self.text_section)
+        return "\n".join(indented_data_section + indented_text_section)
 
     def process_instruction(self, instr: Instruction):
         if instr.op == Operation.PARAM:
@@ -280,7 +293,7 @@ class MIPSCodeGenerator:
         """
         Handle procedure return operations.
         """
-        self.text_section.append("jr $ra  # Return from procedure")
+        self.text_section.append("jr $ra")
 
     def handle_label(self, instr: Instruction):
         self.text_section.append(f"{instr.result}:  # Label {instr.result}")
