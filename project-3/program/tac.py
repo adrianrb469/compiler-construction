@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Optional
+from typing import List, Optional, Set
 
 
 class Operation(Enum):
@@ -62,8 +62,6 @@ class Instruction:
         if self.op == Operation.LABEL:
             return f"{self.main} {self.result}_:"
 
-        # TODO check when self.op is None because it causes an error, why it is None?
-        # in the compiled code there is a output of "Ln:" why?
         if self.op is None:
             return ""
 
@@ -84,10 +82,32 @@ class IntermediateCodeGenerator:
         self.label_count: int = 0
         self.table = table
 
+        self.free_temps: List[str] = []
+        self.active_temps: Set[str] = set()
+
+    def is_temp(self, var: str) -> bool:
+        """Check if a variable name represents a temporary variable."""
+        return var.startswith("t")
+
     def new_temp(self) -> str:
-        """Generate a new temporary variable."""
-        self.temp_count += 1
-        return f"t{self.temp_count}"
+        """Allocate a new temporary variable, reusing from the pool if possible."""
+        if self.free_temps:
+            temp = self.free_temps.pop()
+            self.active_temps.add(temp)
+            return temp
+        else:
+            self.temp_count += 1
+            temp = f"t{self.temp_count}"
+            self.active_temps.add(temp)
+            return temp
+
+    def free_temp(self, temp: str) -> None:
+        """Free a temporary variable, making it available for reuse."""
+        if temp in self.active_temps:
+            self.active_temps.remove(temp)
+            self.free_temps.append(temp)
+        else:
+            raise ValueError(f"Attempting to free unallocated temp: {temp}")
 
     def new_label(self) -> str:
         """Generate a new label."""
@@ -102,7 +122,6 @@ class IntermediateCodeGenerator:
         result: Optional[str] = None,
     ) -> None:
         """Emit a TAC instruction as an Instruction instance."""
-        print(self.table.current_scope)
         main_code = self.table.current_scope.name == "global"
         instruction = Instruction(
             op=op, arg1=arg1, arg2=arg2, result=result, main=main_code

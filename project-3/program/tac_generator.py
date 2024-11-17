@@ -405,6 +405,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                         op=Operation.ASSIGN, arg1=expr_result, result=var_name
                     )
                     print(f"Assigned '{expr_result}' to variable '{var_name}'")
+
                     return var_name
                 else:
                     # Handle other cases if necessary
@@ -529,6 +530,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # Emit the TAC instruction
             self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
 
+            #  Free the left operand if it is a temporary variable
+            if self.code_generator.is_temp(left):
+                self.code_generator.free_temp(left)
+
+            if self.code_generator.is_temp(right):
+                self.code_generator.free_temp(right)
+
             # The result becomes the left operand for the next operation if any
             left = temp
 
@@ -561,6 +569,13 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             # Emit the TAC instruction
             self.code_generator.emit(op=op, arg1=left, arg2=right, result=temp)
+
+            # Free the previous temporary if it's a temp
+            if self.code_generator.is_temp(left):
+                self.code_generator.free_temp(left)
+
+            if self.code_generator.is_temp(right):
+                self.code_generator.free_temp(right)
 
             # The result becomes the left operand for the next operation if any
             left = temp
@@ -827,8 +842,6 @@ def generate_tac(code: str, table: SymbolTable) -> List[str]:
 
         visitor = CompiscriptCompiler(table)
         tac_instructions = visitor.visit(tree)
-
-        print(tac_instructions)
 
         # Convert the list of instructions to a string representation
         tac_output = "\n".join(str(instr) for instr in tac_instructions)
