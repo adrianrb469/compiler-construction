@@ -122,7 +122,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             self.in_init_method = function_name == "init"
 
             # Emit the label for the function
-            self.code_generator.emit(Operation.LABEL, result=full_function_name)
+            self.code_generator.emit(Operation.PROCEDURE, result=full_function_name)
 
             # If within a class, handle 'this' as the first parameter
             if self.current_class:
@@ -141,6 +141,8 @@ class CompiscriptCompiler(CompiscriptVisitor):
 
             # Always return to the caller function
             self.code_generator.emit(Operation.RETURN)
+
+            self.code_generator.emit(Operation.END_PROCEDURE)
 
             # Reset the init method flag and current function
             self.in_init_method = False

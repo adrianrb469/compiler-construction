@@ -37,6 +37,8 @@ class Operation(Enum):
     PARAM = auto()  # For passing parameters
     CALL = auto()  # For calling functions/methods
     RETURN = auto()  # For return statements
+    PROCEDURE = auto()  # For procedure declarations
+    END_PROCEDURE = auto()  # For procedure terminations
 
     # Object-Oriented Operations
     INHERIT = auto()  # For class inheritance
@@ -60,7 +62,13 @@ class Instruction:
 
     def __str__(self):
         if self.op == Operation.LABEL:
-            return f"{self.main} {self.result}_:"
+            return f"{self.result}:"
+
+        if self.op == Operation.PROCEDURE:
+            return f"PROC {self.result}:"
+
+        if self.op == Operation.END_PROCEDURE:
+            return f"END PROCEDURE"
 
         if self.op is None:
             return ""
