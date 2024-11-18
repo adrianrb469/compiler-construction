@@ -685,7 +685,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
                     if self.current_class:
                         self.code_generator.emit(Operation.PARAM, arg1="this")
                     for arg in arguments:
-                        self.code_generator.emit(Operation.PARAM, arg1=arg)
+                        self.code_generator.emit(Operation.ARG, arg1=arg)
 
                     # Emit CALL instruction
                     self.code_generator.emit(

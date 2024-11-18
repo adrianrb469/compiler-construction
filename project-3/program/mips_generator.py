@@ -20,6 +20,9 @@ class MIPSCodeGenerator:
         self.procedures = {"main": []}
         self.procedure_stack = ["main"]
 
+        self.current_args = []
+        self.current_params = []
+
     def free_register(self, var: str) -> None:
         """
         Free the register(s) holding the specified variable, excluding 'memory'.
@@ -101,6 +104,7 @@ class MIPSCodeGenerator:
         self.procedures[current_procedure].append(instruction)
 
     def generate(self, instructions: List[Instruction]) -> str:
+
         for instr in instructions:
             self.process_instruction(instr)
 
@@ -137,9 +141,17 @@ class MIPSCodeGenerator:
         return final_code
 
     def process_instruction(self, instr: Instruction):
+        print(f"Processing instruction: {instr}")
+        print(f"Arg1: {instr.arg1}")
+        print(f"Arg2: {instr.arg2}")
+        print(f"Result: {instr.result}")
+        print(f"Operation: {instr.op}")
 
         if instr.op == Operation.PARAM:
             self.handle_param(instr)
+            print(f"Current Params: {self.current_params}")
+        elif instr.op == Operation.ARG:
+            self.current_args.append(instr.arg1)
         elif instr.op == Operation.CALL:
             self.handle_call(instr)
         elif instr.op == Operation.RETURN:
@@ -196,7 +208,43 @@ class MIPSCodeGenerator:
             raise ValueError(f"Unsupported operation: {instr.op}")
 
     def handle_procedure(self, instr: Instruction):
+        """
+        Handle the start of a procedure.
+        """
+        self.procedure_stack.append(instr.result)
+        if instr.result not in self.procedures:
+            self.procedures[instr.result] = []
+
         self.add_instruction(f"{instr.result}:")
+
+        # Initialize a list to keep track of parameters for this procedure
+        self.current_params: List[str] = []
+
+    def handle_param(self, instr: Instruction):
+        """
+        Assign $a0-$a3 to parameter variables at the start of a procedure.
+        """
+        param_index = len(self.current_params)
+        if param_index >= 4:
+            raise ValueError(
+                "Procedures with more than 4 parameters are not supported."
+            )
+
+        param_reg = f"$a{param_index}"
+        param_var = instr.arg1  # Assuming 'PARAM number' where arg1 is 'number'
+
+        # # Ensure the variable is declared
+        # self.ensure_variable(param_var)
+
+        # Move from $a register to a temporary register or store directly
+        reg = self.get_register(param_var)
+        self.add_instruction(f"move {reg}, {param_reg}  # Assign parameter {param_var}")
+
+        # Update descriptors
+        self.register_descriptor[reg].add(param_var)
+        self.address_descriptor.setdefault(param_var, set()).add(reg)
+
+        self.current_params.append(param_var)
 
     def handle_and(self, instr: Instruction):
         """
@@ -285,6 +333,9 @@ class MIPSCodeGenerator:
             self.free_register(f"const_{instr.arg2}")
         else:
             self.free_register(instr.arg2)
+
+    def is_register(self, var: str) -> bool:
+        return var.startswith("$")
 
     def ensure_variable(self, var: str):
         """Ensure that a variable is declared in the data section."""
@@ -506,43 +557,68 @@ class MIPSCodeGenerator:
 
     def handle_call(self, instr: Instruction):
         """
-        Handle procedure call operations.
+        Handle procedure call by moving arguments to $a0-$a3 and issuing 'jal'.
         """
-        # instr.result contains the label of the procedure to call
-        procedure_label = instr.arg1
-        self.add_instruction(
-            f"jal {procedure_label}  # Call procedure {procedure_label}"
-        )
+        arg_registers = ["$a0", "$a1", "$a2", "$a3"]
+        num_args = len(self.current_args)
+
+        if num_args > 4:
+            raise ValueError(
+                "Function calls with more than 4 parameters are not supported."
+            )
+
+        # Move each argument to the corresponding $a register
+        for i in range(num_args):
+            arg = self.current_args[i]
+            reg = arg_registers[i]
+            if arg.isdigit():
+                self.add_instruction(f"li {reg}, {arg}  # Load immediate argument")
+            else:
+                arg_reg = self.get_register(arg)
+                self.add_instruction(f"lw {reg}, {arg}  # Load argument from {arg}")
+                self.free_register(arg)
+
+        # Clear the current_args list after moving arguments
+        self.current_args = []
+
+        # Jump and link to the procedure
+        self.add_instruction(f"jal {instr.arg1}  # Call procedure {instr.arg1}")
 
     def handle_return(self, instr: Instruction):
         """
-        Handle procedure return operations.
+        Handle procedure return operations by emitting 'jr $ra'.
         """
-        self.add_instruction("jr $ra")
+        self.add_instruction("jr $ra  # Return from procedure")
 
     def handle_label(self, instr: Instruction):
         self.add_instruction(f"{instr.result}:")
 
     def handle_print(self, instr: Instruction):
-        if instr.arg1.startswith('"'):  # String literal
-            label = self.get_string_literal(instr.arg1)
-            self.add_instruction(f"li $v0, 4  # Print string")
-            self.add_instruction(f"la $a0, {label}")
-            self.add_instruction("syscall")
-        else:  # Variable (assume numeric for now)
-            print(f"Print: {instr.arg1}")
+        """
+        Handle print operations by determining the type of the argument
+        and emitting the appropriate syscall.
+        """
+        var = instr.arg1
 
-            if instr.arg1 in self.variables:
-                reg = self.get_register(instr.arg1)
-                self.add_instruction(f"lw {reg}, {instr.arg1}")
-                self.add_instruction(f"li $v0, 1  # Print integer")
-                self.add_instruction(f"move $a0, {reg}")
-                self.add_instruction("syscall")
+        if var.startswith('"') and var.endswith('"'):  # String literal
+            label = self.get_string_literal(var)
+            self.add_instruction("li $v0, 4  # Print string syscall")
+            self.add_instruction(f"la $a0, {label}  # Load address of string to print")
+            self.add_instruction("syscall")
+        else:
+            # Assume it's an integer variable
+            reg = self.get_register(var)
+            if var in self.variables:
+                self.add_instruction(f"lw {reg}, {var}  # Load integer to print")
+            self.add_instruction("li $v0, 1  # Print integer syscall")
+            self.add_instruction(f"move $a0, {reg}  # Move integer to $a0")
+            self.add_instruction("syscall")
+
+            # Free the register if it's a temporary
+            if var.startswith("const_"):
+                self.free_register(var)
             else:
-                reg = self.get_register(instr.arg1)
-                self.add_instruction(f"li $v0, 1  # Print integer")
-                self.add_instruction(f"move $a0, {reg}")
-                self.add_instruction("syscall")
+                self.free_register(var)
 
     def get_string_literal(self, value: str) -> str:
         """Ensure a string literal is in the data section."""

@@ -34,8 +34,9 @@ class Operation(Enum):
     LABEL = auto()
 
     # Function and Method Operations
-    PARAM = auto()  # For passing parameters
+    ARG = auto()
     CALL = auto()  # For calling functions/methods
+    PARAM = auto()  # For passing parameters to functions/methods
     RETURN = auto()  # For return statements
     PROCEDURE = auto()  # For procedure declarations
     END_PROCEDURE = auto()  # For procedure terminations
