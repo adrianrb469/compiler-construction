@@ -240,7 +240,7 @@ class CompiscriptCompiler(CompiscriptVisitor):
             print("Unknow type of modifier in 'foor' loop.")
 
         # Emit increment or decrement instruction
-        self.code_generator.emit(operation, arg1=var_name, arg2=number, result=temp)
+        self.code_generator.emit(operation, arg1=var_name, arg2=str(number), result=temp)
         # Assign the result to the variable
         self.code_generator.emit(Operation.ASSIGN, arg1=temp, result=var_name)
 
@@ -636,9 +636,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 arguments.append(arg_result)
 
         # Emit PARAM instructions for each argument, including 'this' as the first argument
-        self.code_generator.emit(Operation.PARAM, arg1=temp)  # 'this'
+        self.code_generator.emit(Operation.ARG, arg1=temp)  # 'this'
         for arg in arguments:
-            self.code_generator.emit(Operation.PARAM, arg1=arg)
+            self.code_generator.emit(Operation.ARG, arg1=arg)
 
         # Emit the CALL instruction for the constructor
         self.code_generator.emit(Operation.CALL, arg1=constructor_name, result=None)
