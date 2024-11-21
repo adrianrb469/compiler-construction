@@ -134,7 +134,10 @@ class CompiscriptCompiler(CompiscriptVisitor):
                 for param in ctx.parameters().IDENTIFIER():
                     param_name = param.getText()
                     self.function_params.append(param_name)
-                    self.code_generator.emit(Operation.PARAM, arg1=param_name)
+                    # self.code_generator.emit(Operation.PARAM, arg1=param_name)
+                self.code_generator.emit(
+                    Operation.PARAM, arg1=",".join(self.function_params)
+                )
 
             # Visit the function block
             self.visit(ctx.block())

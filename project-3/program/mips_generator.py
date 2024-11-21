@@ -125,13 +125,20 @@ class MIPSCodeGenerator:
             self.address_descriptor[var] = {f"-{self.stack_offset}($sp)"}
             return f"-{self.stack_offset}($sp)"
 
-    def add_instruction(self, instruction: str) -> None:
+    def add_instruction(self, instruction: str, start_of_procedure: bool = False):
         """
         Append an instruction to the current procedure.
         """
 
         current_procedure = self.procedure_stack[-1]
-        self.procedures[current_procedure].append(instruction)
+
+        if start_of_procedure:
+            # @Hack: to allocate space for $ra at the start of a procedure
+            print("Allocating space for $ra, at ", current_procedure)
+            print(self.procedures[current_procedure])
+            self.procedures[current_procedure].insert(1, instruction)
+        else:
+            self.procedures[current_procedure].append(instruction)
 
     def generate(self, instructions: List[Instruction]) -> str:
 
@@ -238,7 +245,7 @@ class MIPSCodeGenerator:
 
         self.add_instruction(f"{instr.result}:")
 
-        self.add_instruction("addi $sp, $sp, -4  # Allocate space for $ra")
+        # self.add_instruction("addi $sp, $sp, -4  # Allocate space for $ra")
         self.add_instruction("sw $ra, 0($sp)    # Save return address")
 
         self.current_params: List[str] = []
@@ -247,27 +254,41 @@ class MIPSCodeGenerator:
 
     def handle_param(self, instr: Instruction):
         """
-        Assign $a0-$a3 to parameter variables at the start of a procedure.
+        Allocate stack space and assign $a0-$a3 to parameter variables at the start of a procedure.
+        Handles all parameters at once.
         """
-        param_index = len(self.current_params)
-        if param_index >= 4:
+        # Split parameters and append them into stack/registers
+
+        args = instr.arg1.split(",")  # Split the comma-separated parameters
+
+        if len(args) > 4:
             raise ValueError(
                 "Procedures with more than 4 parameters are not supported."
             )
 
-        param_reg = f"$a{param_index}"
-        param_var = instr.arg1
-        self.current_params.append(param_var)
+        # Allocate stack space for all parameters
+        total_size = len(args) * 4 + 4  # 4 bytes for each parameter + 4 bytes for $ra
 
-        # Move from $a register to $s register
-        s_reg = f"$s{param_index}"
-        self.add_instruction(f"move {s_reg}, {param_reg}")
+        self.add_instruction(
+            f"addi $sp, $sp, -{total_size}", start_of_procedure=True
+        )  # Allocate stack space
 
-        # Allocate stack space for the parameter
-        self.stack_offset += 4  # Increment stack_offset first
-        offset = self.stack_offset
-        self.add_instruction(f"sw {s_reg}, -{offset}($sp)")
-        self.address_descriptor[param_var] = {f"-{offset}($sp)"}
+        self.stack_offset += total_size  # Update total stack offset
+
+        # Assign parameters to registers and stack
+        for i, param_var in enumerate(args):
+            param_reg = f"$a{i}"  # Argument register ($a0-$a3)
+            s_reg = f"$s{i}"  # Temporary storage register ($s0-$s3)
+
+            # Move from argument register to temporary register
+            self.add_instruction(f"move {s_reg}, {param_reg}")
+
+            # Calculate stack offset for this parameter
+            offset = (i + 1) * 4
+            self.add_instruction(f"sw {s_reg}, -{offset}($sp)")
+
+            # Update address descriptor for the variable
+            self.address_descriptor[param_var] = {f"-{offset}($sp)"}
 
     def handle_and(self, instr: Instruction):
         """
