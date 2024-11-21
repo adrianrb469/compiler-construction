@@ -139,9 +139,6 @@ class CompiscriptCompiler(CompiscriptVisitor):
             # Visit the function block
             self.visit(ctx.block())
 
-            # Always return to the caller function
-            self.code_generator.emit(Operation.RETURN)
-
             self.code_generator.emit(Operation.END_PROCEDURE)
 
             # Reset the init method flag and current function
@@ -240,7 +237,9 @@ class CompiscriptCompiler(CompiscriptVisitor):
             print("Unknow type of modifier in 'foor' loop.")
 
         # Emit increment or decrement instruction
-        self.code_generator.emit(operation, arg1=var_name, arg2=str(number), result=temp)
+        self.code_generator.emit(
+            operation, arg1=var_name, arg2=str(number), result=temp
+        )
         # Assign the result to the variable
         self.code_generator.emit(Operation.ASSIGN, arg1=temp, result=var_name)
 
