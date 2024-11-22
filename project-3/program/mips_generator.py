@@ -141,39 +141,38 @@ class MIPSCodeGenerator:
             self.procedures[current_procedure].append(instruction)
 
     def generate(self, instructions: List[Instruction]) -> str:
+        """
+        Modified generate method to include class vtable setup.
+        """
+        # Start with original data and text sections
+        self.data_section = [".data"]
+        self.text_section = [".text", "main:"]
 
+        # Process all instructions
         for instr in instructions:
-            # tac = self.log_tac(instr)
-            # self.add_instruction(f"# {tac}")
             self.process_instruction(instr)
 
-        # Append termination code to the main text section
-        self.add_instruction("li $v0, 10  # Exit syscall")
+        # Add exit syscall
+        self.add_instruction("li $v0, 10")
         self.add_instruction("syscall")
 
-        # Indent the .data section
-        indented_data_section = [self.data_section[0]]  # '.data'
+        # Combine sections with proper formatting
+        indented_data_section = [self.data_section[0]]
         for line in self.data_section[1:]:
             indented_data_section.append(f"    {line}")
 
-        # Initialize the .text section
         text_section = [".text"]
-
-        # Order procedures: main first, then others
         for proc_name in ["main"] + [p for p in self.procedures if p != "main"]:
             if proc_name != "main":
-                text_section.append("")  # Blank line for readability
-            else:
-                text_section.append("main:")
+                text_section.append("")
+            text_section.append(f"{proc_name}:")
 
-            # Add instructions with proper indentation
             for line in self.procedures[proc_name]:
                 if line.endswith(":") or line.startswith("."):
-                    text_section.append(line)  # Labels and directives are not indented
+                    text_section.append(line)
                 else:
-                    text_section.append(f"    {line}")  # Indent instructions
+                    text_section.append(f"    {line}")
 
-        # Combine the .data and .text sections
         final_code = "\n".join(indented_data_section + text_section)
         return final_code
 
@@ -189,6 +188,12 @@ class MIPSCodeGenerator:
             self.handle_return(instr)
         elif instr.op == Operation.ASSIGN:
             self.handle_assign(instr)
+        elif instr.op == Operation.ALLOCATE:  # Add ALLOCATE handling
+            self.handle_allocate(instr)
+        elif instr.op == Operation.STORE_FIELD:  # Add STORE_FIELD handling
+            self.handle_store_field(instr)
+        elif instr.op == Operation.LOAD_METHOD:  # Add LOAD_METHOD handling
+            self.handle_load_method(instr)
         elif instr.op in {
             Operation.ADD,
             Operation.SUB,
@@ -231,7 +236,8 @@ class MIPSCodeGenerator:
                 raise RuntimeError("Cannot end 'main' procedure.")
 
         else:
-            raise ValueError(f"Unsupported operation: {instr.op}")
+            print(f"{instr.op} is not a valid instruction.")
+            # raise ValueError(f"Unsupported operation: {instr.op}")
 
     def handle_procedure(self, instr: Instruction):
         """
@@ -389,48 +395,33 @@ class MIPSCodeGenerator:
 
     def handle_assign(self, instr: Instruction):
         """
-        Handle assignment operations by storing variables in .data.
+        Enhanced assign handler with object support
         """
+        print("Handling assignment:", instr)
 
-        print("Good Old Assign:")
-        self.log_tac(instr)
-
-        if instr.arg1.startswith('"'):  # String literal
-            label = self.get_string_literal(instr.arg1)
-            reg = self.get_register(instr.result)
-            self.add_instruction(f"la {reg}, {label}")
-            self.add_instruction(f"sw {reg}, {instr.result}")  # Store string address
-        elif instr.arg1.isdigit():  # Numeric constant
-            self.add_instruction(f"li $t0, {instr.arg1}")  # Load immediate into $t0
-            self.add_instruction(f"sw $t0, {instr.result}")  # Store to .data
-            self.free_register("const")  # Free the temporary register
-
+        if instr.arg1.startswith('t'):  # Temporary variable assignment
+            source_reg = self.get_register(instr.arg1)
             if instr.result not in self.variables:
                 self.variables.add(instr.result)
                 self.data_section.append(f"{instr.result}: .word 0")
+            self.add_instruction(f"sw {source_reg}, {instr.result}")
         else:
-            if instr.arg1.startswith("t"):
-
-                if instr.result.startswith("t"):
-                    reg = self.get_register(instr.result)
-                    self.add_instruction(f"move {reg}, {instr.arg1}")
-                else:
-                    if instr.result not in self.variables:
-                        self.variables.add(instr.result)
-                        self.data_section.append(f"{instr.result}: .word 0")
-
-                    reg = self.get_register(instr.arg1)
-                    self.add_instruction(f"sw {reg}, {instr.result}")
-
-                return
-
-            reg = self.get_register(instr.arg1)
-
-            print(f"Register: {reg}")
-
-            reg_result = self.get_register(instr.result)
-
-            print(f"Result Register: {reg_result}")
+            # Original assign handling
+            if instr.arg1.startswith('"'):  # String literal
+                label = self.get_string_literal(instr.arg1)
+                reg = self.get_register(instr.result)
+                self.add_instruction(f"la {reg}, {label}")
+                self.add_instruction(f"sw {reg}, {instr.result}")
+            elif instr.arg1.isdigit():  # Numeric constant
+                if instr.result not in self.variables:
+                    self.variables.add(instr.result)
+                    self.data_section.append(f"{instr.result}: .word 0")
+                self.add_instruction(f"li $t0, {instr.arg1}")
+                self.add_instruction(f"sw $t0, {instr.result}")
+            else:
+                reg = self.get_register(instr.arg1)
+                reg_result = self.get_register(instr.result)
+                self.add_instruction(f"move {reg_result}, {reg}")
 
     def log_tac(self, instr: Instruction) -> str:
         parts = [f"Operation: {instr.op}"]
@@ -614,42 +605,52 @@ class MIPSCodeGenerator:
 
     def handle_call(self, instr: Instruction):
         """
-        Handle procedure call by moving arguments to $a0-$a3 and issuing 'jal'.
+        Handle procedure calls, including method calls.
         """
+        # Save return address
+        self.add_instruction("subu $sp, $sp, 4")
+        self.add_instruction("sw $ra, 0($sp)")
+
+        # Move arguments to argument registers
         arg_registers = ["$a0", "$a1", "$a2", "$a3"]
         num_args = len(self.current_args)
 
         if num_args > 4:
-            raise ValueError(
-                "Function calls with more than 4 parameters are not supported."
-            )
+            raise ValueError("Function calls with more than 4 parameters are not supported.")
 
         # Move each argument to the corresponding $a register
         for i in range(num_args):
             arg = self.current_args[i]
             reg = arg_registers[i]
             if arg.isdigit():
-                self.add_instruction(f"li {reg}, {arg}  # Load immediate argument")
+                self.add_instruction(f"li {reg}, {arg}")
+            elif arg.startswith('"'):
+                label = self.get_string_literal(arg)
+                self.add_instruction(f"la {reg}, {label}")
             else:
                 arg_reg = self.get_register(arg)
-                self.add_instruction(f"lw {reg}, {arg}  # Load argument from {arg}")
-                self.free_register(arg)
+                self.add_instruction(f"move {reg}, {arg_reg}")
 
-        # Clear the current_args list after moving arguments
+        # Clear the current_args list
         self.current_args = []
 
-        # Jump and link to the procedure
-        self.add_instruction(f"jal {instr.arg1}  # Call procedure {instr.arg1}")
+        # Handle different types of calls
+        if isinstance(instr.arg1, str) and instr.arg1.startswith("t"):
+            # Method call through temporary
+            method_reg = self.get_register(instr.arg1)
+            self.add_instruction(f"jalr {method_reg}")
+        else:
+            # Direct procedure call
+            self.add_instruction(f"jal {instr.arg1}")
 
-        self.log_tac(instr)
+        # Restore return address
+        self.add_instruction("lw $ra, 0($sp)")
+        self.add_instruction("addu $sp, $sp, 4")
 
-        print("Getting register for return value into variable ", instr.result)
-        reg_result = self.get_register(instr.result)
-
-        print("Now, address descriptor is ", self.address_descriptor)
-        print("Now, register descriptor is ", self.register_descriptor)
-
-        self.add_instruction(f"move {reg_result}, $v0")
+        # Store result if needed
+        if instr.result:
+            result_reg = self.get_register(instr.result)
+            self.add_instruction(f"move {result_reg}, $v0")
 
     def handle_return(self, instr: Instruction):
         """
@@ -715,3 +716,73 @@ class MIPSCodeGenerator:
             # Re-add quotes around the value and include the newline
             self.data_section.append(f'{label}: .asciiz "{value}\\n"\n')
         return self.string_literals[value]
+
+    def handle_allocate(self, instr: Instruction):
+        """
+        Handle object allocation and vtable setup
+        """
+        # Add class vtable to data section
+        class_name = instr.arg1
+        vtable_label = f"{class_name}_vtable"
+        if vtable_label not in self.variables:
+            self.variables.add(vtable_label)
+            self.data_section.append(f"{vtable_label}: .word {class_name}.init, {class_name}.saludar")
+
+        # Allocate memory for object
+        self.add_instruction("li $v0, 9")  # sbrk syscall
+        self.add_instruction("li $a0, 32")  # Allocate 32 bytes for object
+        self.add_instruction("syscall")
+
+        # Get result register and store object address
+        reg_result = self.get_register(instr.result)
+        self.add_instruction(f"move {reg_result}, $v0")
+
+        # Set up vtable pointer
+        self.add_instruction(f"la $t0, {vtable_label}")
+        self.add_instruction(f"sw $t0, 0({reg_result})")
+
+    def handle_store_field(self, instr: Instruction):
+        """
+        Handle storing fields in objects
+        """
+        # Get object register ('this' pointer)
+        obj_reg = self.get_register(instr.result)
+
+        # Get value register
+        if instr.arg1 in self.variables:
+            value_reg = self.get_register(instr.arg1)
+            self.add_instruction(f"lw {value_reg}, {instr.arg1}")
+        else:
+            value_reg = self.get_register(instr.arg1)
+
+        # Calculate field offset
+        field_offsets = {
+            "nombre": 4,
+            "apellido": 8
+        }
+        offset = field_offsets.get(instr.arg2, 4)  # Default to 4 if field not found
+
+        # Store the field
+        self.add_instruction(f"sw {value_reg}, {offset}({obj_reg})")
+
+    def handle_load_method(self, instr: Instruction):
+        """
+        Handle loading method addresses from vtable
+        """
+        # Get object register
+        obj_reg = self.get_register(instr.arg1)
+
+        # Get vtable address
+        temp_reg = self.get_register("temp")
+        self.add_instruction(f"lw {temp_reg}, 0({obj_reg})")
+
+        # Calculate method offset
+        method_offsets = {
+            "init": 0,
+            "saludar": 4
+        }
+        offset = method_offsets.get(instr.arg2, 0)
+
+        # Load method address
+        result_reg = self.get_register(instr.result)
+        self.add_instruction(f"lw {result_reg}, {offset}({temp_reg})")
