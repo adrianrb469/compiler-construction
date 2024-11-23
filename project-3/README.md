@@ -1,6 +1,6 @@
 # Three Address Code for CompiScript 🧑🏻‍💻
 
-This project consists on translate CompiScript code to Three Address Code. The purpose is to generate intermediate code mips assembly.
+This project consists on translate CompiScript code to Three Address Code and finally to Mips code.
 
 ## Team Members 👥
 
@@ -9,9 +9,9 @@ This project consists on translate CompiScript code to Three Address Code. The p
 
 ## Project Demo 🎥
 
-[https://youtu.be/t5RvYUXjmvs](https://youtu.be/t5RvYUXjmvs)
+[https://youtu.be/BW47YvWrBx8](https://youtu.be/BW47YvWrBx8)
 
-[![CompiScript Demo](https://img.youtube.com/vi/t5RvYUXjmvs/0.jpg)](https://youtu.be/t5RvYUXjmvs)
+[![CompiScript Demo](https://img.youtube.com/vi/BW47YvWrBx8/0.jpg)](https://youtu.be/BW47YvWrBx8)
 
 Click the image above to watch our project demo on YouTube.
 
