@@ -25,7 +25,7 @@ class MIPSCodeGenerator:
 
     def free_register(self, var: str) -> None:
         """
-        Free the register(s) holding the specified variable, excluding 'memory'.
+        Free the register(s) holding the specified variable, excluding stack memory locations.
         """
 
         if var in self.address_descriptor:
@@ -33,16 +33,18 @@ class MIPSCodeGenerator:
             regs = self.address_descriptor[var].copy()
 
             for reg in regs:
-                if reg == "memory":
-                    continue  # Skip 'memory' as it's not a register
+                if "($sp)" in reg:
+                    continue  # Skip stack memory addresses
                 if reg in self.register_descriptor:
                     if var in self.register_descriptor[reg]:
                         self.register_descriptor[reg].remove(var)
                 # Remove the register from the address descriptor for the variable
                 self.address_descriptor[var].remove(reg)
+
             # If the variable is no longer in any register, remove it from the address descriptor
             if not self.address_descriptor[var]:
                 del self.address_descriptor[var]
+
         else:
             # Variable not found in any register; nothing to free
             pass
@@ -53,28 +55,27 @@ class MIPSCodeGenerator:
         If the variable is in memory, load it into a register.
         """
 
-        # If the variable is already in a register, return the register
-        for reg, vars in self.register_descriptor.items():
-            if var in vars:
-                return reg
+        print(self.address_descriptor)
 
-        # If the variable is in memory, load it into a register
         if var in self.address_descriptor:
             memory_locations = self.address_descriptor[var]
             for addr in memory_locations:
                 if "($sp)" in addr:  # Check if the variable is in stack memory
-                    print(f"Loading {var} from memory")
-
-                    # Allocate a free register
                     for reg, vars in self.register_descriptor.items():
-                        if not vars:
+                        if not vars:  # Allocate a free register
                             # Load from memory into the register
                             self.add_instruction(
-                                f"lw {reg}, {addr}  # Load {var} from memory"
+                                f"lw {reg}, {addr}  # Load {var} from stack"
                             )
                             self.register_descriptor[reg].add(var)
-                            self.address_descriptor[var].add(reg)
+                            # Keep both register and stack offset in address descriptor
+                            # self.address_descriptor[var].add(reg)
                             return reg
+
+        # If the variable is already in a register, return the register
+        for reg, vars in self.register_descriptor.items():
+            if var in vars:
+                return reg
 
         # If the variable is not in memory or a register, allocate an empty register
         for reg, vars in self.register_descriptor.items():
@@ -82,6 +83,10 @@ class MIPSCodeGenerator:
                 self.register_descriptor[reg].add(var)
                 self.address_descriptor.setdefault(var, set()).add(reg)
                 return reg
+
+        print("No register found")
+        print("Register Descriptor:", self.register_descriptor)
+        print("Address Descriptor:", self.address_descriptor)
 
         # If all registers are full, spill one to memory
         reg_to_spill = self.select_register_to_spill()
@@ -134,8 +139,7 @@ class MIPSCodeGenerator:
 
         if start_of_procedure:
             # @Hack: to allocate space for $ra at the start of a procedure
-            print("Allocating space for $ra, at ", current_procedure)
-            print(self.procedures[current_procedure])
+
             self.procedures[current_procedure].insert(1, instruction)
         else:
             self.procedures[current_procedure].append(instruction)
@@ -231,7 +235,29 @@ class MIPSCodeGenerator:
         elif instr.op == Operation.END_PROCEDURE:
             # End of the current procedure
             if len(self.procedure_stack) > 1:
+
+                self.add_instruction(f"{self.procedure_stack[-1]}_end:")
+
+                # Restore $ra from the stack
+                self.add_instruction("lw $ra, 0($sp)  # Restore return address")
+
+                if self.stack_offset != 0:
+                    # Clean up stack space for parameters and local variables
+                    self.add_instruction(
+                        f"addi $sp, $sp, {self.stack_offset}  # Clean up stack"
+                    )
+
+                # Return to the caller
+                self.add_instruction("jr $ra  # Return from procedure")
+
+                if self.stack_offset != 0:
+
+                    self.add_instruction(
+                        f"addi $sp, $sp, -{self.stack_offset}", start_of_procedure=True
+                    )  # Allocate stack space
+
                 self.procedure_stack.pop()
+
             else:
                 raise RuntimeError("Cannot end 'main' procedure.")
 
@@ -251,12 +277,20 @@ class MIPSCodeGenerator:
 
         self.add_instruction(f"{instr.result}:")
 
-        # self.add_instruction("addi $sp, $sp, -4  # Allocate space for $ra")
-        self.add_instruction("sw $ra, 0($sp)    # Save return address")
+        self.add_instruction("sw $ra, 0($sp)")
+
+        if instr.result == "getInput":
+            # Emit instructions to get input from the user
+            # Load syscall code for reading an integer
+            self.add_instruction("li $v0, 5  # Read integer syscall")
+            self.add_instruction("syscall  # Perform syscall to read integer")
+
+            # Save the input to a designated location in memory
+            input_var = "input_value"
+            self.ensure_variable(input_var)  # Ensure it's declared in the data section
+            self.add_instruction(f"sw $v0, {input_var}  # Save input to memory")
 
         self.current_params: List[str] = []
-
-        self.stack_offset = 4
 
     def handle_param(self, instr: Instruction):
         """
@@ -275,26 +309,18 @@ class MIPSCodeGenerator:
         # Allocate stack space for all parameters
         total_size = len(args) * 4 + 4  # 4 bytes for each parameter + 4 bytes for $ra
 
-        self.add_instruction(
-            f"addi $sp, $sp, -{total_size}", start_of_procedure=True
-        )  # Allocate stack space
-
         self.stack_offset += total_size  # Update total stack offset
 
         # Assign parameters to registers and stack
         for i, param_var in enumerate(args):
             param_reg = f"$a{i}"  # Argument register ($a0-$a3)
-            s_reg = f"$s{i}"  # Temporary storage register ($s0-$s3)
-
-            # Move from argument register to temporary register
-            self.add_instruction(f"move {s_reg}, {param_reg}")
 
             # Calculate stack offset for this parameter
             offset = (i + 1) * 4
-            self.add_instruction(f"sw {s_reg}, -{offset}($sp)")
+            self.add_instruction(f"sw {param_reg}, {offset}($sp)")
 
             # Update address descriptor for the variable
-            self.address_descriptor[param_var] = {f"-{offset}($sp)"}
+            self.address_descriptor[param_var] = {f"{offset}($sp)"}
 
     def handle_and(self, instr: Instruction):
         """
@@ -399,29 +425,66 @@ class MIPSCodeGenerator:
         """
         print("Handling assignment:", instr)
 
-        if instr.arg1.startswith('t'):  # Temporary variable assignment
-            source_reg = self.get_register(instr.arg1)
-            if instr.result not in self.variables:
-                self.variables.add(instr.result)
-                self.data_section.append(f"{instr.result}: .word 0")
-            self.add_instruction(f"sw {source_reg}, {instr.result}")
-        else:
-            # Original assign handling
-            if instr.arg1.startswith('"'):  # String literal
-                label = self.get_string_literal(instr.arg1)
-                reg = self.get_register(instr.result)
-                self.add_instruction(f"la {reg}, {label}")
-                self.add_instruction(f"sw {reg}, {instr.result}")
-            elif instr.arg1.isdigit():  # Numeric constant
+        print("instructionooon res: ", instr.result, "arg1: ", instr.arg1)
+
+        if instr.arg1.startswith('"'):  # String literal
+            label = self.get_string_literal(instr.arg1)
+            reg = self.get_register(instr.result)
+            self.add_instruction(f"la {reg}, {label}")
+            self.add_instruction(f"sw {reg}, {instr.result}")  # Store string address
+        elif instr.arg1.isdigit():  # Numeric constant
+            if self.procedure_stack[-1] != "main":
+                reg = self.get_register(instr.arg1)
+                print("reg", reg)
+                self.add_instruction(
+                    f"li {reg}, {instr.arg1}"
+                )  # Load immediate into $t0
+                self.stack_offset = self.stack_offset + 4
+                self.add_instruction(f"sw {reg}, {self.stack_offset}($sp)")
+
+            else:
+
+                self.add_instruction(f"li $t0, {instr.arg1}")  # Load immediate into $t0
+                self.add_instruction(f"sw $t0, {instr.result}")  # Store to .data
+                self.free_register("const")  # Free the temporary register
+
                 if instr.result not in self.variables:
                     self.variables.add(instr.result)
                     self.data_section.append(f"{instr.result}: .word 0")
-                self.add_instruction(f"li $t0, {instr.arg1}")
-                self.add_instruction(f"sw $t0, {instr.result}")
-            else:
-                reg = self.get_register(instr.arg1)
-                reg_result = self.get_register(instr.result)
-                self.add_instruction(f"move {reg_result}, {reg}")
+        else:
+
+            if instr.arg1.startswith("t"):
+
+                if instr.result.startswith("t"):
+                    reg = self.get_register(instr.result)
+                    self.add_instruction(f"move {reg}, {instr.arg1}")
+
+                else:
+                    if self.procedure_stack[-1] == "main":
+
+                        if instr.result not in self.variables:
+                            self.variables.add(instr.result)
+                            self.data_section.append(f"{instr.result}: .word 0")
+
+                        reg = self.get_register(instr.arg1)
+                        self.add_instruction(f"sw {reg}, {instr.result}")
+                        self.free_register(instr.arg1)
+                    else:
+                        reg_src = self.get_register(instr.arg1)
+                        self.add_instruction(f"sw {reg_src}, {self.stack_offset}($sp)")
+                        self.address_descriptor[instr.result] = {
+                            f"{self.stack_offset}($sp)"
+                        }
+                        self.stack_offset += 4
+                        self.free_register(instr.arg1)
+                        # reg = self.get_register(instr.arg1)
+                        # self.add_instruction(f"move {instr.result}, {reg}")
+
+                return
+
+            reg = self.get_register(instr.arg1)
+
+            reg_result = self.get_register(instr.result)
 
     def log_tac(self, instr: Instruction) -> str:
         parts = [f"Operation: {instr.op}"]
@@ -463,6 +526,7 @@ class MIPSCodeGenerator:
                 self.add_instruction(f"li {temp_reg1}, {instr.arg1}")
                 reg_arg1 = temp_reg1
             else:
+
                 reg_arg1 = self.get_register(instr.arg1)
 
                 if instr.arg1 in self.variables:
@@ -551,6 +615,18 @@ class MIPSCodeGenerator:
         self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
 
     def handle_comparison(self, instr: Instruction):
+
+        print(
+            "Operation",
+            instr.op,
+            "Arg1",
+            instr.arg1,
+            "Arg2",
+            instr.arg2,
+            "Result",
+            instr.result,
+        )
+
         reg_result = self.get_register(instr.result)
 
         # Handle arg1
@@ -563,17 +639,21 @@ class MIPSCodeGenerator:
         else:
             reg_arg1 = self.get_register(instr.arg1)
 
+        print("reg_arg1", reg_arg1)
+
         # Handle arg2
         if instr.arg2.isdigit():
+
             reg_arg2 = self.get_register(instr.arg2)
             self.add_instruction(f"li {reg_arg2}, {instr.arg2}")
+
         elif instr.arg2 in self.variables:
             reg_arg2 = self.get_register(instr.arg2)
             self.add_instruction(f"lw {reg_arg2}, {instr.arg2}")
         else:
             reg_arg2 = self.get_register(instr.arg2)
 
-        print(f"Comparing {instr.arg1} and {instr.arg2}")
+        print("reg_arg2", reg_arg2)
 
         op_map = {
             Operation.GT: "sgt",
@@ -589,7 +669,9 @@ class MIPSCodeGenerator:
         )
 
         # Update register descriptors
+        print("reg_result", reg_result)
         self.register_descriptor[reg_result].add(instr.result)
+
         self.address_descriptor.setdefault(instr.result, set()).add(reg_result)
 
         # Free source registers after use
@@ -607,16 +689,13 @@ class MIPSCodeGenerator:
         """
         Handle procedure calls, including method calls.
         """
-        # Save return address
-        self.add_instruction("subu $sp, $sp, 4")
-        self.add_instruction("sw $ra, 0($sp)")
-
-        # Move arguments to argument registers
         arg_registers = ["$a0", "$a1", "$a2", "$a3"]
         num_args = len(self.current_args)
 
         if num_args > 4:
-            raise ValueError("Function calls with more than 4 parameters are not supported.")
+            raise ValueError(
+                "Function calls with more than 4 parameters are not supported."
+            )
 
         # Move each argument to the corresponding $a register
         for i in range(num_args):
@@ -628,8 +707,14 @@ class MIPSCodeGenerator:
                 label = self.get_string_literal(arg)
                 self.add_instruction(f"la {reg}, {label}")
             else:
-                arg_reg = self.get_register(arg)
-                self.add_instruction(f"move {reg}, {arg_reg}")
+                if arg in self.variables:
+                    # load the variable from memory
+                    self.add_instruction(f"lw {reg}, {arg}")
+                else:
+
+                    arg_reg = self.get_register(arg)
+                    self.add_instruction(f"move {reg}, {arg_reg}")
+                    self.free_register(arg)
 
         # Clear the current_args list
         self.current_args = []
@@ -647,31 +732,18 @@ class MIPSCodeGenerator:
         self.add_instruction("lw $ra, 0($sp)")
         self.add_instruction("addu $sp, $sp, 4")
 
-        # Store result if needed
-        if instr.result:
-            result_reg = self.get_register(instr.result)
-            self.add_instruction(f"move {result_reg}, $v0")
+        reg_result = self.get_register(instr.result)
+
+        self.add_instruction(f"move {reg_result}, $v0")
 
     def handle_return(self, instr: Instruction):
-        """
-        Handle procedure return operations by setting the return value,
-        restoring $ra, cleaning up the stack, and emitting 'jr $ra'.
-        """
         if instr.arg1:  # If there is a value to return
             # Load the return value into $v0
             reg = self.get_register(
                 instr.arg1
             )  # Get the register holding the return value
             self.add_instruction(f"move $v0, {reg}  # Set return value into $v0")
-
-        # Restore $ra from the stack
-        self.add_instruction("lw $ra, 0($sp)  # Restore return address")
-
-        # Clean up stack space for parameters and local variables
-        self.add_instruction(f"addi $sp, $sp, {self.stack_offset}  # Clean up stack")
-
-        # Return to the caller
-        self.add_instruction("jr $ra  # Return from procedure")
+        self.add_instruction(f"j {self.procedure_stack[-1]}_end")
 
     def handle_label(self, instr: Instruction):
         self.add_instruction(f"{instr.result}:")
@@ -726,7 +798,9 @@ class MIPSCodeGenerator:
         vtable_label = f"{class_name}_vtable"
         if vtable_label not in self.variables:
             self.variables.add(vtable_label)
-            self.data_section.append(f"{vtable_label}: .word {class_name}.init, {class_name}.saludar")
+            self.data_section.append(
+                f"{vtable_label}: .word {class_name}.init, {class_name}.saludar"
+            )
 
         # Allocate memory for object
         self.add_instruction("li $v0, 9")  # sbrk syscall
@@ -756,10 +830,7 @@ class MIPSCodeGenerator:
             value_reg = self.get_register(instr.arg1)
 
         # Calculate field offset
-        field_offsets = {
-            "nombre": 4,
-            "apellido": 8
-        }
+        field_offsets = {"nombre": 4, "apellido": 8}
         offset = field_offsets.get(instr.arg2, 4)  # Default to 4 if field not found
 
         # Store the field
@@ -777,10 +848,7 @@ class MIPSCodeGenerator:
         self.add_instruction(f"lw {temp_reg}, 0({obj_reg})")
 
         # Calculate method offset
-        method_offsets = {
-            "init": 0,
-            "saludar": 4
-        }
+        method_offsets = {"init": 0, "saludar": 4}
         offset = method_offsets.get(instr.arg2, 0)
 
         # Load method address

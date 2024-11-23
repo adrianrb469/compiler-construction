@@ -74,14 +74,14 @@ class Instruction:
         if self.op is None:
             return ""
 
-        parts = [self.op.name]
+        parts = [self.op.name.lower()]
+        if self.result is not None:
+            parts.append(str(self.result))
         if self.arg1 is not None:
             parts.append(str(self.arg1))
         if self.arg2 is not None:
             parts.append(str(self.arg2))
-        if self.result is not None:
-            parts.append(str(self.result))
-        return " ".join(parts)  # Add indentation for non-label instructions
+        return " ".join(parts)
 
 
 class IntermediateCodeGenerator:
